@@ -21,7 +21,7 @@ aabb = "0.1.0"
 ### Basic Example
 
 ```rust
-use aabb::HilbertRTree;
+use aabb::prelude::*;
 
 fn main() {
     let mut tree = HilbertRTree::new();

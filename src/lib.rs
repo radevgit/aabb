@@ -1,4 +1,5 @@
 pub mod hilbert_rtree;
+pub mod prelude;
 
 pub use hilbert_rtree::HilbertRTree;
 

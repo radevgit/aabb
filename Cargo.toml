@@ -1,6 +1,6 @@
 [package]
 
-name = "offroad"
+name = "aabb"
 version = "0.1.0"
 description = "Static AABB spatial index for 2D queries"
 rust-version = "1.88"
