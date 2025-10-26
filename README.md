@@ -1,4 +1,8 @@
 # AABB - Hilbert R-tree Spatial Index
+[![Crates.io](https://img.shields.io/crates/v/aabb.svg?color=blue)](https://crates.io/crates/aabb)
+[![Documentation](https://docs.rs/aabb/badge.svg)](https://docs.rs/aabb)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 
 A Rust library providing a simple and efficient Hilbert R-tree implementation for spatial queries on axis-aligned bounding boxes (AABBs).
 
@@ -15,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-aabb = "0.1.0"
+aabb = "0.1"
 ```
 
 ### Basic Example
