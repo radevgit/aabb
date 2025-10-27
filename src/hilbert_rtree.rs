@@ -1,4 +1,4 @@
-#![warn(unsafe_code)]
+//#![warn(unsafe_code)]
 
 //! Hilbert R-tree implementation using unsafe memory layout for performance.
 //!
@@ -6,7 +6,7 @@
 //! Memory is managed in a single buffer with type-punned box structures and indices.
 //! Buffer invariants are maintained throughout the tree's lifetime.
 
-use std::mem;
+use std::mem::size_of;
 
 /// Box structure: minX, minY, maxX, maxY
 #[repr(C)]
@@ -24,7 +24,7 @@ impl Box {
     }
 }
 
-/// Hilbert R-tree for spatial queries - following flatbush algorithm (C++ version)
+/// Hilbert R-tree for spatial queries - following flatbush algorithm
 ///
 /// Memory layout (in single buffer):
 /// - Header: 8 bytes (magic, version, node_size, num_items)
@@ -61,8 +61,16 @@ impl HilbertRTree {
 
     /// Creates a new Hilbert R-tree with preallocated capacity
     pub fn with_capacity(capacity: usize) -> Self {
+        let data = if capacity > 0 {
+            let mut v = Vec::new();
+            v.resize(HEADER_SIZE + capacity * size_of::<Box>(), 0);
+            v
+        } else {
+            Vec::new()
+        };
+        
         HilbertRTree {
-            data: Vec::new(),
+            data,
             level_bounds: Vec::new(),
             node_size: DEFAULT_NODE_SIZE,
             num_items: 0,
@@ -77,16 +85,16 @@ impl HilbertRTree {
         if self.num_items == 0 {
             // Pre-allocate data buffer on first add - need space for header + boxes
             let capacity = 128; // Start with reasonable capacity
-            self.data.resize(HEADER_SIZE + capacity * mem::size_of::<Box>(), 0);
+            self.data.resize(HEADER_SIZE + capacity * size_of::<Box>(), 0);
         }
 
         // Check if we need to expand
-        let required_size = HEADER_SIZE + (self.num_items + 1) * mem::size_of::<Box>();
+        let required_size = HEADER_SIZE + (self.num_items + 1) * size_of::<Box>();
         if required_size > self.data.len() {
             self.data.resize((self.data.len() * 2).max(required_size), 0);
         }
 
-        let box_idx = HEADER_SIZE + self.num_items * mem::size_of::<Box>();
+        let box_idx = HEADER_SIZE + self.num_items * size_of::<Box>();
         let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut Box;
         unsafe {
             std::ptr::write_unaligned(box_ptr, Box::new(min_x, min_y, max_x, max_y));
@@ -110,7 +118,7 @@ impl HilbertRTree {
         let node_size = self.node_size;
 
         // Calculate total nodes and level bounds
-        let mut level_bounds = Vec::new();
+        let mut level_bounds = Vec::with_capacity(16); // Max tree depth ~16 for 1M items
         let mut count = num_items;
         let mut total_nodes = num_items;
         level_bounds.push(total_nodes);
@@ -125,7 +133,7 @@ impl HilbertRTree {
         }
 
         // Resize data buffer to final size
-        let data_size = HEADER_SIZE + total_nodes * (mem::size_of::<Box>() + mem::size_of::<u32>());
+        let data_size = HEADER_SIZE + total_nodes * (size_of::<Box>() + size_of::<u32>());
         self.data.resize(data_size, 0);
 
         // Write header
@@ -139,14 +147,14 @@ impl HilbertRTree {
 
         // If all items fit in one node, just create root bounds
         if num_items <= node_size {
-            let root_idx = HEADER_SIZE + num_items * mem::size_of::<Box>();
+            let root_idx = HEADER_SIZE + num_items * size_of::<Box>();
             let root_ptr = &mut self.data[root_idx] as *mut u8 as *mut Box;
             unsafe {
                 std::ptr::write_unaligned(root_ptr, self.bounds);
             }
             
-            let indices_start = HEADER_SIZE + total_nodes * mem::size_of::<Box>();
-            let indices_ptr = &mut self.data[indices_start + num_items * mem::size_of::<u32>()] as *mut u8 as *mut u32;
+            let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
+            let indices_ptr = &mut self.data[indices_start + num_items * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
                 std::ptr::write_unaligned(indices_ptr, 0);
             }
@@ -171,9 +179,9 @@ impl HilbertRTree {
         self.quicksort(&mut hilbert_values, 0, num_items - 1);
 
         // Initialize leaf indices
-        let indices_start = HEADER_SIZE + total_nodes * mem::size_of::<Box>();
+        let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         for i in 0..num_items {
-            let idx_ptr = &mut self.data[indices_start + i * mem::size_of::<u32>()] as *mut u8 as *mut u32;
+            let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
                 std::ptr::write_unaligned(idx_ptr, i as u32);
             }
@@ -203,14 +211,14 @@ impl HilbertRTree {
                 }
 
                 // Write parent node box
-                let box_idx = HEADER_SIZE + parent_pos * mem::size_of::<Box>();
+                let box_idx = HEADER_SIZE + parent_pos * size_of::<Box>();
                 let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut Box;
                 unsafe {
                     std::ptr::write_unaligned(box_ptr, node_box);
                 }
 
                 // Write parent node index
-                let idx_ptr = &mut self.data[indices_start + parent_pos * mem::size_of::<u32>()] as *mut u8 as *mut u32;
+                let idx_ptr = &mut self.data[indices_start + parent_pos * size_of::<u32>()] as *mut u8 as *mut u32;
                 unsafe {
                     std::ptr::write_unaligned(idx_ptr, node_index);
                 }
@@ -246,7 +254,7 @@ impl HilbertRTree {
 
         results.clear();
         
-        let mut queue = Vec::new();
+        let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
         let mut node_index = total_nodes - 1;
         
@@ -297,7 +305,7 @@ impl HilbertRTree {
 
         results.clear();
         
-        let mut queue: Vec<(u64, usize)> = Vec::new(); // (dist_bits, index)
+        let mut queue: Vec<(u64, usize)> = Vec::with_capacity(self.level_bounds.len() * 2);
         let mut node_index = self.level_bounds.last().copied().unwrap_or(0) - 1;
         
         loop {
@@ -348,7 +356,7 @@ impl HilbertRTree {
     /// Get box at position (using slice from_raw_parts - Option 4)
     #[inline]
     fn get_box(&self, pos: usize) -> Box {
-        let idx = HEADER_SIZE + pos * mem::size_of::<Box>();
+        let idx = HEADER_SIZE + pos * size_of::<Box>();
         let box_slice = unsafe {
             std::slice::from_raw_parts(&self.data[idx] as *const u8 as *const Box, 1)
         };
@@ -359,9 +367,9 @@ impl HilbertRTree {
     #[inline]
     fn get_index(&self, pos: usize) -> u32 {
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let indices_start = HEADER_SIZE + total_nodes * mem::size_of::<Box>();
+        let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         let idx_slice = unsafe {
-            std::slice::from_raw_parts(&self.data[indices_start + pos * mem::size_of::<u32>()] as *const u8 as *const u32, 1)
+            std::slice::from_raw_parts(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32, 1)
         };
         idx_slice[0]
     }
@@ -452,8 +460,8 @@ impl HilbertRTree {
         hilbert_values.swap(left, right);
 
         // Swap boxes
-        let left_box_idx = HEADER_SIZE + left * mem::size_of::<Box>();
-        let right_box_idx = HEADER_SIZE + right * mem::size_of::<Box>();
+        let left_box_idx = HEADER_SIZE + left * size_of::<Box>();
+        let right_box_idx = HEADER_SIZE + right * size_of::<Box>();
         
         let left_box = self.get_box(left);
         let right_box = self.get_box(right);
@@ -468,10 +476,10 @@ impl HilbertRTree {
 
         // Swap indices
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let indices_start = HEADER_SIZE + total_nodes * mem::size_of::<Box>();
+        let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         
-        let left_idx_ptr = &mut self.data[indices_start + left * mem::size_of::<u32>()] as *mut u8 as *mut u32;
-        let right_idx_ptr = &mut self.data[indices_start + right * mem::size_of::<u32>()] as *mut u8 as *mut u32;
+        let left_idx_ptr = &mut self.data[indices_start + left * size_of::<u32>()] as *mut u8 as *mut u32;
+        let right_idx_ptr = &mut self.data[indices_start + right * size_of::<u32>()] as *mut u8 as *mut u32;
         
         unsafe {
             let left_idx = std::ptr::read_unaligned(left_idx_ptr);
@@ -499,7 +507,7 @@ fn interleave(mut x: u32) -> u32 {
 }
 
 #[allow(non_snake_case)]
-fn hilbert_xy_to_index(mut x: u32, mut y: u32) -> u32 {
+fn hilbert_xy_to_index(x: u32, y: u32) -> u32 {
     // Initial prefix scan round, prime with x and y
     let mut a = x ^ y;
     let mut b = 0xFFFF ^ a;
@@ -514,27 +522,27 @@ fn hilbert_xy_to_index(mut x: u32, mut y: u32) -> u32 {
     b = B;
     c = C;
     d = D;
-    A = ((a & (a >> 2)) ^ (b & (b >> 2)));
-    B = ((a & (b >> 2)) ^ (b & ((a ^ b) >> 2)));
-    C ^= ((a & (c >> 2)) ^ (b & (d >> 2)));
-    D ^= ((b & (c >> 2)) ^ ((a ^ b) & (d >> 2)));
+    A = (a & (a >> 2)) ^ (b & (b >> 2));
+    B = (a & (b >> 2)) ^ (b & ((a ^ b) >> 2));
+    C ^= (a & (c >> 2)) ^ (b & (d >> 2));
+    D ^= (b & (c >> 2)) ^ ((a ^ b) & (d >> 2));
 
     a = A;
     b = B;
     c = C;
     d = D;
-    A = ((a & (a >> 4)) ^ (b & (b >> 4)));
-    B = ((a & (b >> 4)) ^ (b & ((a ^ b) >> 4)));
-    C ^= ((a & (c >> 4)) ^ (b & (d >> 4)));
-    D ^= ((b & (c >> 4)) ^ ((a ^ b) & (d >> 4)));
+    A = (a & (a >> 4)) ^ (b & (b >> 4));
+    B = (a & (b >> 4)) ^ (b & ((a ^ b) >> 4));
+    C ^= (a & (c >> 4)) ^ (b & (d >> 4));
+    D ^= (b & (c >> 4)) ^ ((a ^ b) & (d >> 4));
 
     // Final round and projection
     a = A;
     b = B;
     c = C;
     d = D;
-    C ^= ((a & (c >> 8)) ^ (b & (d >> 8)));
-    D ^= ((b & (c >> 8)) ^ ((a ^ b) & (d >> 8)));
+    C ^= (a & (c >> 8)) ^ (b & (d >> 8));
+    D ^= (b & (c >> 8)) ^ ((a ^ b) & (d >> 8));
 
     // Undo transformation prefix scan
     a = C ^ (C >> 1);
@@ -544,5 +552,5 @@ fn hilbert_xy_to_index(mut x: u32, mut y: u32) -> u32 {
     let i0 = x ^ y;
     let i1 = b | (0xFFFF ^ (i0 | a));
 
-    ((interleave(i1) << 1) | interleave(i0))
+    (interleave(i1) << 1) | interleave(i0)
 }
