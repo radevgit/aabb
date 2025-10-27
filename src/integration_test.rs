@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod integration_tests {
-    use crate::HilbertRTree;
+    use crate::HilbertRTreeLeg;
 
     #[test]
     fn test_new_api_parameter_order() {
         // Integration test to demonstrate the new API parameter order: (min_x, min_y, max_x, max_y)
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         
         // Add some boxes using the new parameter order
         tree.add(0.0, 0.0, 2.0, 2.0);    // Box 0: bottom-left (0,0) to top-right (2,2)

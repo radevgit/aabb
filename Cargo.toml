@@ -26,6 +26,10 @@ opt-level = 3
 rand = "0.9"
 
 [[bench]]
+name = "query_intersecting_bench_leg"
+harness = false
+
+[[bench]]
 name = "query_intersecting_bench"
 harness = false
 

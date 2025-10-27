@@ -1,10 +1,10 @@
-//! Benchmark for hierarchical query_intersecting performance
+//! Benchmark for query_intersecting performance
 //!
 //! This benchmark measures the performance of the `query_intersecting` method
-//! on a HilbertRTree2 (hierarchical) with 1M randomly distributed bounding boxes.
+//! on a HilbertRTree with 1M randomly distributed bounding boxes.
 //! Queries are performed with varying size categories (10%, 1%, 0.01%).
 
-use aabb::HilbertRTree;
+use aabb::HilbertRTreeLeg;
 use rand::Rng;
 use rand::SeedableRng;
 use std::time::Instant;
@@ -28,7 +28,7 @@ fn add_random_box<R: Rng>(rng: &mut R, boxes: &mut Vec<f64>, max_size: f64) {
 
 /// Benchmark search operations with different query box sizes
 fn bench_search(
-    tree: &HilbertRTree,
+    tree: &HilbertRTreeLeg,
     boxes: &[f64],
     num_tests: usize,
     percentage_str: &str,
@@ -52,35 +52,10 @@ fn bench_search(
     );
 }
 
-/// Benchmark K-nearest neighbor queries
-// fn bench_neighbors(
-//     tree: &HilbertRTree,
-//     num_tests: usize,
-//     k: usize,
-// ) {
-//     let mut results = Vec::new();
-//     let start = Instant::now();
-    
-//     for i in 0..num_tests {
-//         results.clear();
-//         let x = (i as f64 * 0.5) % 100.0;
-//         let y = (i as f64 * 0.7) % 100.0;
-//         tree.query_nearest_k(x, y, k, &mut results);
-//     }
-    
-//     let elapsed = start.elapsed();
-//     println!(
-//         "{} searches of {} neighbors: {}ms",
-//         num_tests,
-//         k,
-//         elapsed.as_millis()
-//     );
-// }
-
 
 fn main() {
-    println!("AABB Hierarchical Hilbert R-tree Benchmark");
-    println!("=========================================\n");
+    println!("AABB Hilbert R-tree Benchmark");
+    println!("============================\n");
     
     let num_items = 1_000_000;
     let num_tests = 1_000;
@@ -112,7 +87,7 @@ fn main() {
     // Build index
     println!("Building index with {} items...", num_items);
     let start = Instant::now();
-    let mut tree = HilbertRTree::new();
+    let mut tree = HilbertRTreeLeg::new();
     
     for chunk in coords.chunks(4) {
         if chunk.len() == 4 {
@@ -134,10 +109,5 @@ fn main() {
     bench_search(&tree, &boxes_100, num_tests, "10");
     bench_search(&tree, &boxes_10, num_tests, "1");
     bench_search(&tree, &boxes_1, num_tests, "0.01");
-
-        // Benchmark nearest neighbor queries
-    // println!("Running neighbor benchmarks:");
-    // println!("-----------------------");
-    // bench_neighbors(&tree, num_tests, 100);
     println!();
 }

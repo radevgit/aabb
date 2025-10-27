@@ -131,15 +131,20 @@
 //! while preserving spatial locality - points that are close in 2D space tend to be 
 //! close in the 1D Hilbert ordering.
 
-/// Core Hilbert R-tree spatial index data structure
+/// Core Hilbert R-tree spatial index data structure (flat sorted version)
+pub mod hilbert_rtree_leg;
+/// Hierarchical Hilbert R-tree spatial index (flatbush-inspired)
 pub mod hilbert_rtree;
-/// Spatial query implementations
+/// Spatial query implementations for HilbertRTree
 pub mod queries;
 /// Integration tests for the library
 pub mod integration_test;
+/// Comparison tests between both implementations
+pub mod comparison_tests;
 /// Prelude for convenient imports
 pub mod prelude;
 
+pub use hilbert_rtree_leg::HilbertRTreeLeg;
 pub use hilbert_rtree::HilbertRTree;
 
 /// Add two unsigned 64-bit integers

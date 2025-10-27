@@ -2,9 +2,9 @@
 //!
 //! This module contains all spatial query methods for the HilbertRTree.
 
-use crate::HilbertRTree;
+use crate::HilbertRTreeLeg;
 
-impl HilbertRTree {
+impl HilbertRTreeLeg {
     /// Internal helper for basic AABB intersection queries
     fn query_intersecting_internal(
         &self,
@@ -486,7 +486,7 @@ impl HilbertRTree {
         let radius_sq = radius * radius;
 
         for &idx in &self.sorted_order {
-            let (min_x, max_x, min_y, max_y) = self.boxes[idx];
+            let (min_x, min_y, max_x, max_y) = self.boxes[idx];
             
             // Find closest point on box to circle center
             let closest_x = center_x.clamp(min_x, max_x);
@@ -617,11 +617,11 @@ impl HilbertRTree {
 
 #[cfg(test)]
 mod tests {
-    use crate::HilbertRTree;
+    use crate::HilbertRTreeLeg;
 
     #[test]
     fn test_hilbert_rtree_query_intersecting() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 0.0, 1.0, 1.0);
         tree.add(2.0, 2.0, 3.0, 3.0);
         tree.add(0.5, 0.5, 1.5, 1.5);
@@ -638,7 +638,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_no_intersections() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);
         tree.add(5.0, 6.0, 5.0, 6.0);
         tree.build();
@@ -652,7 +652,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_point() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 0.0, 2.0, 2.0);  // Contains (1.0, 1.0)
         tree.add(3.0, 3.0, 4.0, 4.0);  // Does not contain (1.0, 1.0)
         tree.add(0.5, 0.5, 1.5, 1.5);  // Also contains (1.0, 1.0)
@@ -669,14 +669,15 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_containing() {
-        let mut tree = HilbertRTree::new();
-        tree.add(0.0, 4.0, 0.0, 4.0);  // Large box - contains query
-        tree.add(1.0, 2.0, 1.0, 2.0);  // Small box - does not contain query
-        tree.add(-1.0, 5.0, -1.0, 5.0); // Even larger box - also contains query
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(0.0, 0.0, 4.0, 4.0);  // Large box - contains query
+        tree.add(1.0, 2.0, 1.5, 2.5);  // Small box - does not contain query
+        tree.add(-1.0, -1.0, 5.0, 5.0); // Even larger box - also contains query
         tree.build();
         
         let mut results = Vec::new();
-        tree.query_containing(1.5, 3.5, 1.5, 3.5, &mut results);
+        tree.query_containing(1.5, 1.5, 3.5, 3.5, &mut results);
         
         // Should find boxes 0 and 2 (both contain the query rectangle)
         assert_eq!(results.len(), 2);
@@ -686,14 +687,15 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_contained_by() {
-        let mut tree = HilbertRTree::new();
-        tree.add(1.0, 2.0, 1.0, 2.0);  // Small box - contained by query
-        tree.add(0.0, 4.0, 0.0, 4.0);  // Large box - not contained by query
-        tree.add(2.0, 3.0, 2.0, 3.0);  // Another small box - also contained
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(1.0, 1.0, 2.0, 2.0);  // Small box - contained by query
+        tree.add(0.0, 0.0, 4.0, 4.0);  // Large box - not contained by query
+        tree.add(2.0, 2.0, 3.0, 3.0);  // Another small box - also contained
         tree.build();
         
         let mut results = Vec::new();
-        tree.query_contained_by(0.5, 3.5, 0.5, 3.5, &mut results);
+        tree.query_contained_by(0.5, 0.5, 3.5, 3.5, &mut results);
         
         // Should find boxes 0 and 2 (both are contained by the query rectangle)
         assert_eq!(results.len(), 2);
@@ -703,15 +705,16 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_intersecting_k() {
-        let mut tree = HilbertRTree::new();
-        tree.add(0.0, 2.0, 0.0, 2.0);
-        tree.add(1.0, 3.0, 1.0, 3.0);
-        tree.add(1.5, 2.5, 1.5, 2.5);
-        tree.add(1.2, 2.2, 1.2, 2.2);
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(0.0, 0.0, 2.0, 2.0);
+        tree.add(1.0, 1.0, 3.0, 3.0);
+        tree.add(1.5, 1.5, 2.5, 2.5);
+        tree.add(1.2, 1.2, 2.2, 2.2);
         tree.build();
         
         let mut results = Vec::new();
-        tree.query_intersecting_k(1.5, 2.5, 1.5, 2.5, 2, &mut results);
+        tree.query_intersecting_k(1.5, 1.5, 2.5, 2.5, 2, &mut results);
         
         // Should find at most 2 results due to k limit
         assert!(results.len() <= 2);
@@ -720,7 +723,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_nearest_k() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);   // Center at (0.5, 0.5)
         tree.add(2.0, 3.0, 2.0, 3.0);   // Center at (2.5, 2.5)
         tree.add(4.0, 5.0, 4.0, 5.0);   // Center at (4.5, 4.5)
@@ -738,7 +741,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_nearest() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);   // Center at (0.5, 0.5)
         tree.add(2.0, 3.0, 2.0, 3.0);   // Center at (2.5, 2.5)
         tree.build();
@@ -752,7 +755,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_within_distance() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 0.0, 1.0, 1.0);   // Close
         tree.add(5.0, 5.0, 6.0, 6.0);   // Far away
         tree.build();
@@ -767,7 +770,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_circle() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);   // Intersects circle
         tree.add(5.0, 6.0, 5.0, 6.0);   // Outside circle
         tree.build();
@@ -782,9 +785,10 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_in_direction() {
-        let mut tree = HilbertRTree::new();
-        tree.add(2.0, 3.0, 0.0, 1.0);   // To the right, center at (2.5, 0.5)
-        tree.add(0.0, 1.0, 2.0, 3.0);   // Above, center at (0.5, 2.5)
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(2.0, 0.0, 3.0, 1.0);   // To the right, center at (2.5, 0.5)
+        tree.add(0.0, 2.0, 1.0, 3.0);   // Above, center at (0.5, 2.5)
         tree.build();
         
         let mut results = Vec::new();
@@ -798,10 +802,11 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_in_direction_k() {
-        let mut tree = HilbertRTree::new();
-        tree.add(2.0, 3.0, 0.0, 1.0);   // To the right, close (center at 2.5, 0.5)
-        tree.add(4.0, 5.0, 0.0, 1.0);   // To the right, far (center at 4.5, 0.5)
-        tree.add(0.0, 1.0, 2.0, 3.0);   // Above (center at 0.5, 2.5)
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(2.0, 0.0, 3.0, 1.0);   // To the right, close (center at 2.5, 0.5)
+        tree.add(4.0, 0.0, 5.0, 1.0);   // To the right, far (center at 4.5, 0.5)
+        tree.add(0.0, 2.0, 1.0, 3.0);   // Above (center at 0.5, 2.5)
         tree.build();
         
         let mut results = Vec::new();
@@ -817,10 +822,11 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_query_in_direction_swept_area() {
-        let mut tree = HilbertRTree::new();
-        tree.add(2.0, 3.0, 0.0, 1.0);   // To the right, close
-        tree.add(6.0, 7.0, 0.0, 1.0);   // To the right, far
-        tree.add(0.0, 1.0, 2.0, 3.0);   // Above
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(2.0, 0.0, 3.0, 1.0);   // To the right, close
+        tree.add(6.0, 0.0, 7.0, 1.0);   // To the right, far
+        tree.add(0.0, 2.0, 1.0, 3.0);   // Above
         tree.build();
         
         let mut results = Vec::new();
@@ -837,7 +843,7 @@ mod tests {
 
     #[test]
     fn test_hilbert_rtree_empty_queries() {
-        let tree = HilbertRTree::new();
+        let tree = HilbertRTreeLeg::new();
         
         // Test all queries on empty tree
         let mut results = Vec::new();
@@ -870,7 +876,7 @@ mod tests {
 
     #[test]
     fn test_floating_point_edge_cases() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);
         tree.build();
         
@@ -908,7 +914,7 @@ mod tests {
 
     #[test]
     fn test_directional_query_edge_cases() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(1.0, 2.0, 1.0, 2.0);
         tree.build();
         
@@ -956,7 +962,7 @@ mod tests {
 
     #[test]
     fn test_query_intersecting_k_edge_cases() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);
         tree.add(0.5, 1.5, 0.5, 1.5);
         tree.add(0.2, 1.2, 0.2, 1.2);
@@ -981,8 +987,9 @@ mod tests {
 
     #[test]
     fn test_point_query_boundary_cases() {
-        let mut tree = HilbertRTree::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);  // Box from (0,0) to (1,1)
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(0.0, 0.0, 1.0, 1.0);  // Box from (0,0) to (1,1)
         tree.build();
         
         let mut results = Vec::new();
@@ -1015,8 +1022,9 @@ mod tests {
 
     #[test]
     fn test_distance_query_precision() {
-        let mut tree = HilbertRTree::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);  // Box centered at (0.5, 0.5)
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(0.0, 0.0, 1.0, 1.0);  // Box centered at (0.5, 0.5)
         tree.build();
         
         let mut results = Vec::new();
@@ -1037,8 +1045,9 @@ mod tests {
 
     #[test]
     fn test_circle_query_precision() {
-        let mut tree = HilbertRTree::new();
-        tree.add(2.0, 3.0, 2.0, 3.0);  // Box from (2,2) to (3,3)
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(2.0, 2.0, 3.0, 3.0);  // Box from (2,2) to (3,3)
         tree.build();
         
         let mut results = Vec::new();
@@ -1059,7 +1068,7 @@ mod tests {
 
     #[test]
     fn test_nearest_query_ordering() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);   // Center at (0.5, 0.5) - closest
         tree.add(3.0, 4.0, 3.0, 4.0);   // Center at (3.5, 3.5) - farthest  
         tree.add(1.5, 2.5, 1.5, 2.5);   // Center at (2.0, 2.0) - middle
@@ -1081,41 +1090,43 @@ mod tests {
 
     #[test]
     fn test_complex_directional_queries() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
         // Create a grid of boxes
-        tree.add(0.0, 1.0, 0.0, 1.0);   // Bottom-left
-        tree.add(2.0, 3.0, 0.0, 1.0);   // Bottom-right
-        tree.add(0.0, 1.0, 2.0, 3.0);   // Top-left
-        tree.add(2.0, 3.0, 2.0, 3.0);   // Top-right
+        tree.add(0.0, 0.0, 1.0, 1.0);   // Bottom-left
+        tree.add(2.0, 0.0, 3.0, 1.0);   // Bottom-right
+        tree.add(0.0, 2.0, 1.0, 3.0);   // Top-left
+        tree.add(2.0, 2.0, 3.0, 3.0);   // Top-right
         tree.build();
         
         let mut results = Vec::new();
         
         // Query extending right from center-left
-        tree.query_in_direction(1.0, 1.1, 1.0, 1.1, 1.0, 0.0, 2.0, &mut results);
+        tree.query_in_direction(1.0, 1.0, 0.4, 0.6, 1.0, 0.0, 2.0, &mut results);
         assert!(results.contains(&1), "Should find box to the right");
         assert!(!results.contains(&2), "Should not find box above");
         
         results.clear();
         
         // Query extending up from center-bottom
-        tree.query_in_direction(1.0, 1.1, 1.0, 1.1, 0.0, 1.0, 2.0, &mut results);
+        tree.query_in_direction(0.5, 0.6, 1.0, 1.1, 0.0, 1.0, 2.0, &mut results);
         assert!(results.contains(&2), "Should find box above");
         assert!(!results.contains(&1), "Should not find box to the right");
         
         results.clear();
         
         // Test diagonal direction
-        tree.query_in_direction(0.5, 0.6, 0.5, 0.6, 1.0, 1.0, 3.0, &mut results);
+        tree.query_in_direction(0.4, 0.6, 0.4, 0.6, 1.0, 1.0, 3.0, &mut results);
         assert!(results.contains(&3), "Should find box diagonally");
     }
 
     #[test]
     fn test_directional_swept_area() {
-        let mut tree = HilbertRTree::new();
-        tree.add(2.0, 3.0, 0.0, 1.0);   // Close box
-        tree.add(4.0, 5.0, 0.0, 1.0);   // Far box  
-        tree.add(3.0, 4.0, 0.0, 1.0);   // Middle box
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(2.0, 0.0, 3.0, 1.0);   // Close box
+        tree.add(4.0, 0.0, 5.0, 1.0);   // Far box  
+        tree.add(3.0, 0.0, 4.0, 1.0);   // Middle box
         tree.build();
         
         let mut results = Vec::new();
@@ -1141,39 +1152,40 @@ mod tests {
 
     #[test]
     fn test_containment_queries_comprehensive() {
-        let mut tree = HilbertRTree::new();
-        tree.add(0.0, 10.0, 0.0, 10.0);  // Large container box
-        tree.add(2.0, 4.0, 2.0, 4.0);    // Small box inside
-        tree.add(8.0, 12.0, 8.0, 12.0);  // Overlapping box
-        tree.add(-1.0, 1.0, -1.0, 1.0);  // Partially outside box
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
+        tree.add(0.0, 0.0, 10.0, 10.0);  // Large container box
+        tree.add(2.0, 2.0, 4.0, 4.0);    // Small box inside
+        tree.add(8.0, 8.0, 12.0, 12.0);  // Overlapping box
+        tree.add(-1.0, -1.0, 1.0, 1.0);  // Partially outside box
         tree.build();
         
         let mut results = Vec::new();
         
-        // Test query_containing - which boxes contain the query rectangle (3,3.5) to (3,3.5)
-        tree.query_containing(3.0, 3.5, 3.0, 3.5, &mut results);
-        // The large box (0,10) x (0,10) should contain this rectangle
+        // Test query_containing - which boxes contain the query rectangle (3,3) to (3.5,3.5)
+        tree.query_containing(3.0, 3.0, 3.5, 3.5, &mut results);
+        // The large box (0,0) to (10,10) should contain this rectangle
         assert!(results.contains(&0), "Large box should contain the query rectangle");
         assert!(results.len() >= 1, "At least one box should contain the query rectangle");
         
         results.clear();
         
-        // Test query_contained_by - which boxes are contained by the query rectangle (1,9) to (1,9)
-        tree.query_contained_by(1.0, 9.0, 1.0, 9.0, &mut results);
+        // Test query_contained_by - which boxes are contained by the query rectangle (1,1) to (9,9)
+        tree.query_contained_by(1.0, 1.0, 9.0, 9.0, &mut results);
         assert_eq!(results.len(), 1);
         assert!(results.contains(&1), "Small box should be contained by the query rectangle");
         
         results.clear();
         
         // Test edge case - query rectangle exactly matches a box
-        tree.query_containing(2.0, 4.0, 2.0, 4.0, &mut results);
+        tree.query_containing(2.0, 2.0, 4.0, 4.0, &mut results);
         assert!(results.contains(&0), "Large container should contain exact match");
         assert!(results.contains(&1), "Box should contain itself (exact match)");
     }
 
     #[test]
     fn test_internal_methods_coverage() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         tree.add(0.0, 1.0, 0.0, 1.0);
         tree.add(2.0, 3.0, 2.0, 3.0);
         tree.build();
@@ -1212,25 +1224,25 @@ mod tests {
 
     #[test]
     fn test_performance_edge_cases() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
         
         // Add many overlapping boxes to test performance of intersection queries
         for i in 0..100 {
             let offset = i as f64 * 0.01;
-            tree.add(offset, offset + 1.0, offset, offset + 1.0);
+            tree.add(offset, offset, offset + 1.0, offset + 1.0);
         }
         tree.build();
         
         let mut results = Vec::new();
         
         // Query that intersects with many boxes
-        tree.query_intersecting(0.5, 0.6, 0.5, 0.6, &mut results);
+        tree.query_intersecting(0.5, 0.5, 0.6, 0.6, &mut results);
         assert!(results.len() > 10, "Should find many overlapping boxes");
         
         results.clear();
         
         // Test k functionality with many results
-        tree.query_intersecting_k(0.5, 0.6, 0.5, 0.6, 5, &mut results);
+        tree.query_intersecting_k(0.5, 0.5, 0.6, 0.6, 5, &mut results);
         assert_eq!(results.len(), 5, "Should respect k limit even with many candidates");
         
         // Test nearest k with many boxes
@@ -1241,10 +1253,11 @@ mod tests {
 
     #[test]
     fn test_boundary_precision_cases() {
-        let mut tree = HilbertRTree::new();
+        let mut tree = HilbertRTreeLeg::new();
+        // add(min_x, min_y, max_x, max_y)
         // Create boxes with very close boundaries
-        tree.add(0.0, 1.0, 0.0, 1.0);
-        tree.add(1.0, 2.0, 0.0, 1.0);  // Shares edge with first box
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.add(1.0, 0.0, 2.0, 1.0);  // Shares edge with first box
         tree.add(0.0, 1.0, 1.0, 2.0);  // Shares edge with first box
         tree.build();
         
@@ -1257,7 +1270,7 @@ mod tests {
         results.clear();
         
         // Query spanning the boundary
-        tree.query_intersecting(0.9, 1.1, 0.9, 1.1, &mut results);
+        tree.query_intersecting(0.9, 0.9, 1.1, 1.1, &mut results);
         assert_eq!(results.len(), 3, "Query spanning boundaries should find all intersecting boxes");
         
         results.clear();

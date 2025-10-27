@@ -7,4 +7,5 @@
 //! use aabb::prelude::*;
 //! ```
 
+pub use crate::HilbertRTreeLeg;
 pub use crate::HilbertRTree;
