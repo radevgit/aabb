@@ -132,22 +132,29 @@
 //! close in the 1D Hilbert ordering.
 
 /// Core Hilbert R-tree spatial index data structure (flat sorted version)
+#[doc(hidden)]
 pub mod hilbert_rtree_leg;
 /// Hierarchical Hilbert R-tree spatial index (flatbush-inspired)
 pub mod hilbert_rtree;
-/// Spatial query implementations for HilbertRTree
+/// Spatial query implementations for HilbertRTreeLeg (legacy reference implementation)
+#[doc(hidden)]
 pub mod queries;
 /// Integration tests for the library
+#[doc(hidden)]
 pub mod integration_test;
 /// Comparison tests between both implementations
+#[doc(hidden)]
 pub mod comparison_tests;
 /// Component tests for granular method testing
+#[doc(hidden)]
 pub mod component_tests;
 /// Legacy query tests
+#[doc(hidden)]
 pub mod test_legacy_query;
 /// Prelude for convenient imports
 pub mod prelude;
 
+#[doc(hidden)]
 pub use hilbert_rtree_leg::HilbertRTreeLeg;
 pub use hilbert_rtree::HilbertRTree;
 

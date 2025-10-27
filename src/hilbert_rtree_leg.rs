@@ -18,6 +18,7 @@
 /// tree.query_intersecting(0.7, 0.7, 1.3, 1.3, &mut results);
 /// assert_eq!(results.len(), 2); // Both boxes intersect the query
 /// ```
+#[doc(hidden)]
 #[derive(Clone, Debug)]
 pub struct HilbertRTreeLeg {
     /// Flat storage: (min_x, min_y, max_x, max_y) for each box

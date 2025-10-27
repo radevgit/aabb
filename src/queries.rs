@@ -1,6 +1,11 @@
-//! Query implementations for HilbertRTree
+//! Query implementations for HilbertRTreeLeg (legacy/reference implementation)
 //!
-//! This module contains all spatial query methods for the HilbertRTree.
+//! This module contains all spatial query methods for the legacy HilbertRTreeLeg.
+//! 
+//! # Note
+//! This is a reference implementation. For production use, see [`HilbertRTree`].
+
+#![doc(hidden)]
 
 use crate::HilbertRTreeLeg;
 
