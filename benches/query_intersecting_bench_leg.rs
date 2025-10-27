@@ -111,3 +111,17 @@ fn main() {
     bench_search(&tree, &boxes_1, num_tests, "0.01");
     println!();
 }
+
+/*
+
+Index built in 45.08ms
+
+Running query benchmarks:
+-----------------------
+1000 searches 10%: 2022ms
+1000 searches 1%: 1893ms
+1000 searches 0.01%: 1791ms
+
+
+
+*/

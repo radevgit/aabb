@@ -112,7 +112,7 @@ fn main() {
     // Build index
     println!("Building index with {} items...", num_items);
     let start = Instant::now();
-    let mut tree = HilbertRTree::new();
+    let mut tree = HilbertRTree::with_capacity(num_items);
     
     for chunk in coords.chunks(4) {
         if chunk.len() == 4 {
@@ -141,3 +141,15 @@ fn main() {
     // bench_neighbors(&tree, num_tests, 100);
     println!();
 }
+
+/* cargo bench
+
+Index built in 120.92ms
+
+Running query benchmarks:
+-----------------------
+1000 searches 10%: 249ms
+1000 searches 1%: 21ms
+1000 searches 0.01%: 2ms
+
+*/

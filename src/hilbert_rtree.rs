@@ -11,11 +11,11 @@ use std::mem::size_of;
 /// Box structure: minX, minY, maxX, maxY
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Box {
-    min_x: f64,
-    min_y: f64,
-    max_x: f64,
-    max_y: f64,
+pub(crate) struct Box {
+    pub(crate) min_x: f64,
+    pub(crate) min_y: f64,
+    pub(crate) max_x: f64,
+    pub(crate) max_y: f64,
 }
 
 impl Box {
@@ -38,15 +38,15 @@ pub struct HilbertRTree {
     /// Single buffer: header + boxes + indices
     data: Vec<u8>,
     /// Level boundaries: end position of each tree level
-    level_bounds: Vec<usize>,
+    pub(crate) level_bounds: Vec<usize>,
     /// Node size for tree construction
-    node_size: usize,
+    pub(crate) node_size: usize,
     /// Number of leaf items
-    num_items: usize,
+    pub(crate) num_items: usize,
     /// Current position during building
-    position: usize,
+    pub(crate) position: usize,
     /// Bounding box of all items
-    bounds: Box,
+    pub(crate) bounds: Box,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
@@ -123,6 +123,7 @@ impl HilbertRTree {
         let mut total_nodes = num_items;
         level_bounds.push(total_nodes);
 
+        // Create parent levels until we have a single root
         loop {
             count = (count + node_size - 1) / node_size;
             total_nodes += count;
@@ -138,25 +139,35 @@ impl HilbertRTree {
 
         // Write header
         self.data[0] = 0xfb; // magic
-        self.data[1] = 0x30; // version 3 + double type (8)
+        self.data[1] = 0x20; // version 2 + double type (8)
         self.data[2..4].copy_from_slice(&(node_size as u16).to_le_bytes());
         self.data[4..8].copy_from_slice(&(num_items as u32).to_le_bytes());
 
         self.level_bounds = level_bounds;
         self.position = 0;
 
-        // If all items fit in one node, just create root bounds
+        // If all items fit in one node, create a root level
         if num_items <= node_size {
+            // Initialize all leaf indices first
+            let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
+            for i in 0..num_items {
+                let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
+                unsafe {
+                    std::ptr::write_unaligned(idx_ptr, i as u32);
+                }
+            }
+            
+            // Write the root node box at position num_items
             let root_idx = HEADER_SIZE + num_items * size_of::<Box>();
             let root_ptr = &mut self.data[root_idx] as *mut u8 as *mut Box;
             unsafe {
                 std::ptr::write_unaligned(root_ptr, self.bounds);
             }
             
-            let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
-            let indices_ptr = &mut self.data[indices_start + num_items * size_of::<u32>()] as *mut u8 as *mut u32;
+            // Write the root node index (pointer to first child at position 0)
+            let root_idx_ptr = &mut self.data[indices_start + num_items * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
-                std::ptr::write_unaligned(indices_ptr, 0);
+                std::ptr::write_unaligned(root_idx_ptr, 0u32 << 2u32); // First child at position 0
             }
             return;
         }
@@ -175,10 +186,7 @@ impl HilbertRTree {
             hilbert_values[i] = hilbert_xy_to_index(hx, hy);
         }
 
-        // Sort leaves by Hilbert value
-        self.quicksort(&mut hilbert_values, 0, num_items - 1);
-
-        // Initialize leaf indices
+        // Initialize leaf indices BEFORE sorting
         let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         for i in 0..num_items {
             let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
@@ -186,6 +194,9 @@ impl HilbertRTree {
                 std::ptr::write_unaligned(idx_ptr, i as u32);
             }
         }
+
+        // Sort leaves by Hilbert value
+        self.quicksort(&mut hilbert_values, 0, num_items - 1);
 
         // Build parent levels
         let mut pos = 0usize;
@@ -239,6 +250,8 @@ impl HilbertRTree {
         self.num_items == 0
     }
 
+    /// Internal: Generic tree traversal for queries
+
     /// Query for boxes intersecting the given rectangle
     pub fn query_intersecting(
         &self,
@@ -254,7 +267,7 @@ impl HilbertRTree {
 
         results.clear();
         
-        let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
+        let mut queue = Vec::new();
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
         let mut node_index = total_nodes - 1;
         
@@ -300,13 +313,51 @@ impl HilbertRTree {
         results: &mut Vec<usize>,
     ) {
         if self.num_items == 0 || self.level_bounds.is_empty() {
+            results.clear();
+            return;
+        }
+
+        if k == 0 {
+            results.clear();
+            return;
+        }
+
+        // Collect all leaf nodes with their distances
+        let mut candidates: Vec<(u64, usize)> = Vec::with_capacity(self.num_items);
+
+        // Process all leaf nodes (first level_bounds[0] positions)
+        let num_leaves = self.level_bounds[0];
+        for pos in 0..num_leaves {
+            let node_box = self.get_box(pos);
+            let dx = self.axis_distance(point_x, node_box.min_x, node_box.max_x);
+            let dy = self.axis_distance(point_y, node_box.min_y, node_box.max_y);
+            let dist_sq = dx * dx + dy * dy;
+            let dist_bits = dist_sq.to_bits();
+            let index = self.get_index(pos) as usize;
+            candidates.push((dist_bits, index));
+        }
+
+        // Sort by distance and keep only K
+        candidates.sort_by(|a, b| a.0.cmp(&b.0));
+        candidates.truncate(k);
+
+        results.clear();
+        for (_, idx) in candidates {
+            results.push(idx);
+        }
+    }
+
+    /// Query for boxes that contain a specific point
+    pub fn query_point(&self, x: f64, y: f64, results: &mut Vec<usize>) {
+        if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
 
         results.clear();
         
-        let mut queue: Vec<(u64, usize)> = Vec::with_capacity(self.level_bounds.len() * 2);
-        let mut node_index = self.level_bounds.last().copied().unwrap_or(0) - 1;
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -314,16 +365,18 @@ impl HilbertRTree {
             
             for pos in node_index..end_pos {
                 let node_box = self.get_box(pos);
-                let dx = self.axis_distance(point_x, node_box.min_x, node_box.max_x);
-                let dy = self.axis_distance(point_y, node_box.min_y, node_box.max_y);
-                let dist_sq = dx * dx + dy * dy;
-                let dist_bits = dist_sq.to_bits();
                 
-                let index = self.get_index(pos) as usize;
-                if pos >= self.num_items {
-                    queue.push((dist_bits, index >> 2));
+                // Check if point is inside box
+                if x < node_box.min_x || x > node_box.max_x ||
+                   y < node_box.min_y || y > node_box.max_y {
+                    continue;
+                }
+                
+                let index = self.get_index(pos);
+                if node_index >= self.num_items {
+                    queue.push((index >> 2) as usize);
                 } else {
-                    queue.push((dist_bits, (index << 1) + 1));
+                    results.push(index as usize);
                 }
             }
             
@@ -331,23 +384,413 @@ impl HilbertRTree {
                 break;
             }
             
-            queue.sort_by(|a, b| a.0.cmp(&b.0));
-            let (_, idx) = queue.remove(0);
-            node_index = idx;
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for boxes that completely contain a given rectangle
+    pub fn query_containing(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
+        if self.num_items == 0 || self.level_bounds.is_empty() {
+            return;
+        }
+
+        results.clear();
+        
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+        
+        loop {
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
             
+            for pos in node_index..end_pos {
+                let node_box = self.get_box(pos);
+                
+                // Check if node contains the query rectangle
+                if node_box.min_x <= min_x && node_box.max_x >= max_x &&
+                   node_box.min_y <= min_y && node_box.max_y >= max_y {
+                    
+                    let index = self.get_index(pos);
+                    if node_index >= self.num_items {
+                        queue.push((index >> 2) as usize);
+                    } else {
+                        results.push(index as usize);
+                    }
+                }
+            }
+            
+            if queue.is_empty() {
+                break;
+            }
+            
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for boxes that are contained within a given rectangle
+    pub fn query_contained_by(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
+        if self.num_items == 0 || self.level_bounds.is_empty() {
+            return;
+        }
+
+        results.clear();
+        
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+        
+        loop {
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
+            
+            for pos in node_index..end_pos {
+                let node_box = self.get_box(pos);
+                
+                if node_index >= self.num_items {
+                    // This is a parent node - check if it could have matching children
+                    // (any overlap with query region)
+                    if node_box.max_x >= min_x && node_box.max_y >= min_y &&
+                       node_box.min_x <= max_x && node_box.min_y <= max_y {
+                        let index = self.get_index(pos);
+                        queue.push((index >> 2) as usize);
+                    }
+                } else {
+                    // This is a leaf - check if fully contained
+                    if node_box.min_x >= min_x && node_box.max_x <= max_x &&
+                       node_box.min_y >= min_y && node_box.max_y <= max_y {
+                        let index = self.get_index(pos);
+                        results.push(index as usize);
+                    }
+                }
+            }
+            
+            if queue.is_empty() {
+                break;
+            }
+            
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for the single nearest box to a point
+    pub fn query_nearest(&self, x: f64, y: f64) -> Option<usize> {
+        if self.num_items == 0 || self.level_bounds.is_empty() {
+            return None;
+        }
+
+        let mut min_dist_bits = u64::MAX;
+        let mut result = None;
+
+        // Check all leaf nodes
+        let num_leaves = self.level_bounds[0];
+        for pos in 0..num_leaves {
+            let node_box = self.get_box(pos);
+            let dx = self.axis_distance(x, node_box.min_x, node_box.max_x);
+            let dy = self.axis_distance(y, node_box.min_y, node_box.max_y);
+            let dist_sq = dx * dx + dy * dy;
+            let dist_bits = dist_sq.to_bits();
+
+            if dist_bits < min_dist_bits {
+                min_dist_bits = dist_bits;
+                result = Some(self.get_index(pos) as usize);
+            }
+        }
+
+        result
+    }
+
+    /// Query for first K intersecting boxes (stops after K results)
+    pub fn query_intersecting_k(
+        &self,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        k: usize,
+        results: &mut Vec<usize>,
+    ) {
+        if self.num_items == 0 || self.level_bounds.is_empty() || k == 0 {
+            results.clear();
+            return;
+        }
+
+        results.clear();
+        
+        let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+        
+        loop {
             if results.len() >= k {
                 break;
             }
-        }
-        
-        // Collect results
-        for (_, idx) in queue {
-            if idx & 1 == 1 {
-                results.push(idx >> 1);
+
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
+            
+            for pos in node_index..end_pos {
                 if results.len() >= k {
                     break;
                 }
+
+                let node_box = self.get_box(pos);
+                
+                if max_x < node_box.min_x || max_y < node_box.min_y ||
+                   min_x > node_box.max_x || min_y > node_box.max_y {
+                    continue;
+                }
+                
+                let index = self.get_index(pos);
+                if pos < self.num_items {
+                    results.push(index as usize);
+                } else {
+                    queue.push((index >> 2) as usize);
+                }
             }
+            
+            if queue.is_empty() {
+                break;
+            }
+            
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for boxes within a distance of a point
+    pub fn query_within_distance(&self, x: f64, y: f64, max_distance: f64, results: &mut Vec<usize>) {
+        if self.num_items == 0 || self.level_bounds.is_empty() || max_distance < 0.0 {
+            results.clear();
+            return;
+        }
+
+        results.clear();
+        
+        let max_dist_sq = max_distance * max_distance;
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+        
+        loop {
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
+            
+            for pos in node_index..end_pos {
+                let node_box = self.get_box(pos);
+                let dx = self.axis_distance(x, node_box.min_x, node_box.max_x);
+                let dy = self.axis_distance(y, node_box.min_y, node_box.max_y);
+                let dist_sq = dx * dx + dy * dy;
+
+                if dist_sq <= max_dist_sq {
+                    let index = self.get_index(pos);
+                    if node_index >= self.num_items {
+                        queue.push((index >> 2) as usize);
+                    } else {
+                        results.push(index as usize);
+                    }
+                }
+            }
+            
+            if queue.is_empty() {
+                break;
+            }
+            
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for boxes intersecting a circular region
+    pub fn query_circle(&self, center_x: f64, center_y: f64, radius: f64, results: &mut Vec<usize>) {
+        if self.num_items == 0 || self.level_bounds.is_empty() || radius < 0.0 {
+            results.clear();
+            return;
+        }
+
+        results.clear();
+        
+        let radius_sq = radius * radius;
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+        
+        loop {
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
+            
+            for pos in node_index..end_pos {
+                let node_box = self.get_box(pos);
+                // Distance from circle center to box
+                let dx = self.axis_distance(center_x, node_box.min_x, node_box.max_x);
+                let dy = self.axis_distance(center_y, node_box.min_y, node_box.max_y);
+                let dist_sq = dx * dx + dy * dy;
+
+                if dist_sq <= radius_sq {
+                    let index = self.get_index(pos);
+                    if node_index >= self.num_items {
+                        queue.push((index >> 2) as usize);
+                    } else {
+                        results.push(index as usize);
+                    }
+                }
+            }
+            
+            if queue.is_empty() {
+                break;
+            }
+            
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for boxes in a directional path (rectangle moving in direction)
+    pub fn query_in_direction(
+        &self,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        dir_x: f64,
+        dir_y: f64,
+        distance: f64,
+        results: &mut Vec<usize>,
+    ) {
+        if self.num_items == 0 || self.level_bounds.is_empty() || distance < 0.0 {
+            results.clear();
+            return;
+        }
+
+        results.clear();
+        
+        // Normalize direction vector
+        let dir_len_sq = dir_x * dir_x + dir_y * dir_y;
+        if dir_len_sq <= 0.0 {
+            return;
+        }
+        let dir_len = dir_len_sq.sqrt();
+        let norm_dir_x = dir_x / dir_len;
+        let norm_dir_y = dir_y / dir_len;
+        
+        // Calculate movement vector
+        let dx = norm_dir_x * distance;
+        let dy = norm_dir_y * distance;
+        let sweep_min_x = min_x.min(min_x + dx);
+        let sweep_min_y = min_y.min(min_y + dy);
+        let sweep_max_x = max_x.max(max_x + dx);
+        let sweep_max_y = max_y.max(max_y + dy);
+
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+        
+        loop {
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
+            
+            for pos in node_index..end_pos {
+                let node_box = self.get_box(pos);
+                
+                // Check if box intersects the sweep area (AABB intersection)
+                if sweep_max_x < node_box.min_x || sweep_max_y < node_box.min_y ||
+                   sweep_min_x > node_box.max_x || sweep_min_y > node_box.max_y {
+                    continue;
+                }
+                
+                let index = self.get_index(pos);
+                if node_index >= self.num_items {
+                    queue.push((index >> 2) as usize);
+                } else {
+                    results.push(index as usize);
+                }
+            }
+            
+            if queue.is_empty() {
+                break;
+            }
+            
+            node_index = queue.remove(0);
+        }
+    }
+
+    /// Query for K nearest boxes in a directional path
+    pub fn query_in_direction_k(
+        &self,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        dir_x: f64,
+        dir_y: f64,
+        k: usize,
+        distance: f64,
+        results: &mut Vec<usize>,
+    ) {
+        if self.num_items == 0 || self.level_bounds.is_empty() || distance < 0.0 || k == 0 {
+            results.clear();
+            return;
+        }
+
+        // Normalize direction vector
+        let dir_len_sq = dir_x * dir_x + dir_y * dir_y;
+        if dir_len_sq <= 0.0 {
+            results.clear();
+            return;
+        }
+        let dir_len = dir_len_sq.sqrt();
+        let norm_dir_x = dir_x / dir_len;
+        let norm_dir_y = dir_y / dir_len;
+        
+        // Calculate movement vector
+        let dx = norm_dir_x * distance;
+        let dy = norm_dir_y * distance;
+        let sweep_min_x = min_x.min(min_x + dx);
+        let sweep_min_y = min_y.min(min_y + dy);
+        let sweep_max_x = max_x.max(max_x + dx);
+        let sweep_max_y = max_y.max(max_y + dy);
+
+        let mut candidates: Vec<(f64, usize)> = Vec::new();
+
+        let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        queue.push(total_nodes - 1);
+
+        while let Some(node_idx) = queue.pop() {
+            let node_end = self.upper_bound(node_idx);
+            let end_pos = (node_idx + self.node_size).min(node_end);
+
+            for pos in node_idx..end_pos {
+                let node_box = self.get_box(pos);
+                
+                // Check if box intersects the sweep area (AABB intersection)
+                if sweep_max_x < node_box.min_x || sweep_max_y < node_box.min_y ||
+                   sweep_min_x > node_box.max_x || sweep_min_y > node_box.max_y {
+                    continue;
+                }
+
+                let index = self.get_index(pos) as usize;
+
+                if pos < self.num_items {
+                    // Calculate distance to box center along direction
+                    let box_center_x = (node_box.min_x + node_box.max_x) / 2.0;
+                    let box_center_y = (node_box.min_y + node_box.max_y) / 2.0;
+                    
+                    let relative_x = box_center_x - min_x;
+                    let relative_y = box_center_y - min_y;
+                    
+                    // Distance along direction (use normalized direction)
+                    let dist_along_dir = relative_x * norm_dir_x + relative_y * norm_dir_y;
+                    candidates.push((dist_along_dir, index));
+                } else {
+                    queue.push(index >> 2);
+                }
+            }
+        }
+
+        // Sort by distance along direction and take first K
+        candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        
+        results.clear();
+        for (_, idx) in candidates.iter().take(k) {
+            results.push(*idx);
         }
     }
 
@@ -355,7 +798,7 @@ impl HilbertRTree {
 
     /// Get box at position (using slice from_raw_parts - Option 4)
     #[inline]
-    fn get_box(&self, pos: usize) -> Box {
+    pub(crate) fn get_box(&self, pos: usize) -> Box {
         let idx = HEADER_SIZE + pos * size_of::<Box>();
         let box_slice = unsafe {
             std::slice::from_raw_parts(&self.data[idx] as *const u8 as *const Box, 1)
@@ -365,7 +808,7 @@ impl HilbertRTree {
 
     /// Get index at position (using slice from_raw_parts - Option 4)
     #[inline]
-    fn get_index(&self, pos: usize) -> u32 {
+    pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
         let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         let idx_slice = unsafe {

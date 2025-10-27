@@ -141,6 +141,10 @@ pub mod queries;
 pub mod integration_test;
 /// Comparison tests between both implementations
 pub mod comparison_tests;
+/// Component tests for granular method testing
+pub mod component_tests;
+/// Legacy query tests
+pub mod test_legacy_query;
 /// Prelude for convenient imports
 pub mod prelude;
 

@@ -200,12 +200,12 @@ impl HilbertRTreeLeg {
     /// use aabb::HilbertRTree;
     /// 
     /// let mut tree = HilbertRTree::new();
-    /// tree.add(0.0, 2.0, 0.0, 2.0);
-    /// tree.add(1.0, 3.0, 1.0, 3.0);
+    /// tree.add(0.0, 0.0, 2.0, 2.0);
+    /// tree.add(1.0, 1.0, 3.0, 3.0);
     /// tree.build();
     /// 
     /// let mut results = Vec::new();
-    /// tree.query_intersecting(1.5, 2.5, 1.5, 2.5, &mut results);
+    /// tree.query_intersecting(1.5, 1.5, 2.5, 2.5, &mut results);
     /// assert_eq!(results.len(), 2);
     /// ```
     pub fn query_intersecting(
@@ -268,8 +268,8 @@ impl HilbertRTreeLeg {
     /// use aabb::HilbertRTree;
     /// 
     /// let mut tree = HilbertRTree::new();
-    /// tree.add(0.0, 2.0, 0.0, 2.0);  // Contains (1.0, 1.0)
-    /// tree.add(3.0, 4.0, 3.0, 4.0);  // Does not contain (1.0, 1.0)
+    /// tree.add(0.0, 0.0, 2.0, 2.0);  // Contains (1.0, 1.0)
+    /// tree.add(3.0, 3.0, 4.0, 4.0);  // Does not contain (1.0, 1.0)
     /// tree.build();
     /// 
     /// let mut results = Vec::new();
@@ -296,8 +296,8 @@ impl HilbertRTreeLeg {
     /// use aabb::HilbertRTree;
     /// 
     /// let mut tree = HilbertRTree::new();
-    /// tree.add(0.0, 4.0, 0.0, 4.0);  // Large box - contains query
-    /// tree.add(1.0, 2.0, 1.0, 2.0);  // Small box - does not contain query
+    /// tree.add(0.0, 0.0, 4.0, 4.0);  // Large box - contains query
+    /// tree.add(1.0, 1.0, 2.0, 2.0);  // Small box - does not contain query
     /// tree.build();
     /// 
     /// let mut results = Vec::new();
@@ -552,7 +552,7 @@ impl HilbertRTreeLeg {
         }
 
         let candidates = self.query_in_direction_swept_internal(
-            rect_min_x, rect_min_y, rect_max_x, rect_max_y,
+            rect_min_x, rect_max_x, rect_min_y, rect_max_y,
             direction_x, direction_y, distance, true
         );
         
@@ -605,7 +605,7 @@ impl HilbertRTreeLeg {
         results: &mut Vec<usize>,
     ) {
         let candidates = self.query_in_direction_swept_internal(
-            rect_min_x, rect_min_y, rect_max_x, rect_max_y,
+            rect_min_x, rect_max_x, rect_min_y, rect_max_y,
             direction_x, direction_y, distance, false
         );
         
@@ -792,8 +792,8 @@ mod tests {
         tree.build();
         
         let mut results = Vec::new();
-        // Start with small rectangle at (1,0.5) to (1.1,0.6) and extend right
-        tree.query_in_direction(1.0, 1.1, 0.5, 0.6, 1.0, 0.0, 5.0, &mut results);
+        // Start with small rectangle at (1,0.5) to (1.1,0.6) and move right
+        tree.query_in_direction(1.0, 0.5, 1.1, 0.6, 1.0, 0.0, 5.0, &mut results);
         
         // Should find first box (to the right) but not second box (above)
         assert_eq!(results.len(), 1);
@@ -812,7 +812,7 @@ mod tests {
         let mut results = Vec::new();
         // Start with small rectangle at (1,0.5) to (1.1,0.6) (center at 1.05, 0.55)
         // Move right by 10.0 to create swept area, find 2 closest
-        tree.query_in_direction_k(1.0, 1.1, 0.5, 0.6, 1.0, 0.0, 2, 10.0, &mut results);
+        tree.query_in_direction_k(1.0, 0.5, 1.1, 0.6, 1.0, 0.0, 2, 10.0, &mut results);
         
         // Should find both boxes to the right, closest first (sorted by distance from original rectangle center)
         assert_eq!(results.len(), 2);
@@ -832,7 +832,7 @@ mod tests {
         let mut results = Vec::new();
         // Start with small rectangle at (1,0.5) to (1.1,0.6) and move right by 8.0
         // This creates swept area from (1,0.5)-(1.1,0.6) to (9,0.5)-(9.1,0.6)
-        tree.query_in_direction(1.0, 1.1, 0.5, 0.6, 1.0, 0.0, 8.0, &mut results);
+        tree.query_in_direction(1.0, 0.5, 1.1, 0.6, 1.0, 0.0, 8.0, &mut results);
         
         // Should find both boxes to the right (both intersect the swept area)
         assert_eq!(results.len(), 2);
@@ -963,25 +963,25 @@ mod tests {
     #[test]
     fn test_query_intersecting_k_edge_cases() {
         let mut tree = HilbertRTreeLeg::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);
-        tree.add(0.5, 1.5, 0.5, 1.5);
-        tree.add(0.2, 1.2, 0.2, 1.2);
+        tree.add(0.0, 0.0, 1.0, 1.0);   // Box from (0,0) to (1,1)
+        tree.add(0.5, 0.5, 1.5, 1.5);   // Box from (0.5,0.5) to (1.5,1.5)
+        tree.add(0.2, 0.2, 1.2, 1.2);   // Box from (0.2,0.2) to (1.2,1.2)
         tree.build();
         
         let mut results = Vec::new();
         
         // Test k=0
-        tree.query_intersecting_k(0.5, 1.0, 0.5, 1.0, 0, &mut results);
+        tree.query_intersecting_k(0.5, 0.5, 1.0, 1.0, 0, &mut results);
         assert_eq!(results.len(), 0, "k=0 should return no results");
         
         // Test k=1 when multiple boxes intersect
         results.clear();
-        tree.query_intersecting_k(0.5, 1.0, 0.5, 1.0, 1, &mut results);
+        tree.query_intersecting_k(0.5, 0.5, 1.0, 1.0, 1, &mut results);
         assert_eq!(results.len(), 1, "k=1 should return at most 1 result");
         
         // Test k larger than available results
         results.clear();
-        tree.query_intersecting_k(0.5, 1.0, 0.5, 1.0, 10, &mut results);
+        tree.query_intersecting_k(0.5, 0.5, 1.0, 1.0, 10, &mut results);
         assert!(results.len() <= 10 && results.len() > 0, "Should return all available results up to k");
     }
 
@@ -1132,7 +1132,7 @@ mod tests {
         let mut results = Vec::new();
         
         // Query with short movement - should only intersect close box
-        tree.query_in_direction(1.0, 1.1, 0.4, 0.6, 1.0, 0.0, 1.5, &mut results);
+        tree.query_in_direction(1.0, 0.4, 1.1, 0.6, 1.0, 0.0, 1.5, &mut results);
         
         // Swept area from (1,0.4)-(1.1,0.6) to (2.5,0.4)-(2.6,0.6) should intersect close box
         assert_eq!(results.len(), 1);
@@ -1141,7 +1141,7 @@ mod tests {
         results.clear();
         
         // Query with longer movement - should intersect all three boxes  
-        tree.query_in_direction(1.0, 1.1, 0.4, 0.6, 1.0, 0.0, 4.5, &mut results);
+        tree.query_in_direction(1.0, 0.4, 1.1, 0.6, 1.0, 0.0, 4.5, &mut results);
         
         // Swept area from (1,0.4)-(1.1,0.6) to (5.5,0.4)-(5.6,0.6) should intersect all boxes
         assert_eq!(results.len(), 3);
