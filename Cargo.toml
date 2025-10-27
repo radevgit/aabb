@@ -25,6 +25,10 @@ opt-level = 3
 [dev-dependencies]
 rand = "0.9"
 
+[[bench]]
+name = "query_intersecting_bench"
+harness = false
+
 [lints.rust]
 keyword_idents_2024 = "forbid"
 non_ascii_idents = "forbid"
