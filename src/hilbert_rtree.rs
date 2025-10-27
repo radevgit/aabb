@@ -1,4 +1,10 @@
-#![allow(dead_code)]
+#![warn(unsafe_code)]
+
+//! Hilbert R-tree implementation using unsafe memory layout for performance.
+//!
+//! All unsafe operations are internal implementation details. The public API is safe.
+//! Memory is managed in a single buffer with type-punned box structures and indices.
+//! Buffer invariants are maintained throughout the tree's lifetime.
 
 use std::mem;
 
