@@ -10,24 +10,24 @@
 /// use aabb::HilbertRTree;
 ///
 /// let mut tree = HilbertRTree::new();
-/// tree.add(0.0, 1.0, 0.0, 1.0);
-/// tree.add(0.5, 1.5, 0.5, 1.5);
+/// tree.add(0.0, 0.0, 1.0, 1.0);
+/// tree.add(0.5, 0.5, 1.5, 1.5);
 /// tree.build();
 /// 
 /// let mut results = Vec::new();
-/// tree.query_intersecting(0.7, 1.3, 0.7, 1.3, &mut results);
+/// tree.query_intersecting(0.7, 0.7, 1.3, 1.3, &mut results);
 /// assert_eq!(results.len(), 2); // Both boxes intersect the query
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HilbertRTree {
-    /// Flat storage: (min_x, max_x, min_y, max_y) for each box
-    boxes: Vec<(f64, f64, f64, f64)>,
+    /// Flat storage: (min_x, min_y, max_x, max_y) for each box
+    pub(crate) boxes: Vec<(f64, f64, f64, f64)>,
     /// Hilbert indices for sorting
-    hilbert_indices: Vec<u64>,
+    pub(crate) hilbert_indices: Vec<u64>,
     /// Sort order: mapping from Hilbert-sorted position to original index
-    sorted_order: Vec<usize>,
+    pub(crate) sorted_order: Vec<usize>,
     /// Whether the tree has been built
-    built: bool,
+    pub(crate) built: bool,
 }
 
 impl HilbertRTree {
@@ -52,8 +52,8 @@ impl HilbertRTree {
     /// Adds a bounding box to the tree
     ///
     /// Must call `build()` after adding all boxes before querying
-    pub fn add(&mut self, min_x: f64, max_x: f64, min_y: f64, max_y: f64) {
-        self.boxes.push((min_x, max_x, min_y, max_y));
+    pub fn add(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) {
+        self.boxes.push((min_x, min_y, max_x, max_y));
         self.built = false;
     }
 
@@ -67,7 +67,7 @@ impl HilbertRTree {
 
         // Compute Hilbert indices for all boxes (by center)
         self.hilbert_indices.clear();
-        for &(min_x, max_x, min_y, max_y) in &self.boxes {
+        for &(min_x, min_y, max_x, max_y) in &self.boxes {
             let center_x = (min_x + max_x) / 2.0;
             let center_y = (min_y + max_y) / 2.0;
             let h_idx = hilbert_index(center_x, center_y, 16);
@@ -79,28 +79,6 @@ impl HilbertRTree {
         self.sorted_order.sort_by_key(|&idx| self.hilbert_indices[idx]);
 
         self.built = true;
-    }
-
-    /// Queries for all boxes intersecting the given bounding box
-    ///
-    /// Results are appended to the output vector (not cleared first)
-    pub fn query_intersecting(
-        &self,
-        query_min_x: f64,
-        query_max_x: f64,
-        query_min_y: f64,
-        query_max_y: f64,
-        results: &mut Vec<usize>,
-    ) {
-        for &idx in &self.sorted_order {
-            let (min_x, max_x, min_y, max_y) = self.boxes[idx];
-            
-            // AABB intersection test
-            if min_x <= query_max_x && max_x >= query_min_x &&
-               min_y <= query_max_y && max_y >= query_min_y {
-                results.push(idx);
-            }
-        }
     }
 
     /// Returns the number of boxes in the tree
@@ -122,8 +100,12 @@ impl Default for HilbertRTree {
 
 /// Compute Hilbert curve index for a point
 fn hilbert_index(x: f64, y: f64, max_level: u32) -> u64 {
-    let xi = (x.clamp(0.0, 1.0) * ((1u64 << max_level) as f64)) as u64;
-    let yi = (y.clamp(0.0, 1.0) * ((1u64 << max_level) as f64)) as u64;
+    // Handle infinite or NaN coordinates
+    let safe_x = if x.is_finite() { x } else { 0.0 };
+    let safe_y = if y.is_finite() { y } else { 0.0 };
+    
+    let xi = (safe_x.clamp(0.0, 1.0) * ((1u64 << max_level) as f64)) as u64;
+    let yi = (safe_y.clamp(0.0, 1.0) * ((1u64 << max_level) as f64)) as u64;
     xy_to_hilbert(xi, yi, max_level)
 }
 
@@ -173,8 +155,8 @@ mod tests {
     #[test]
     fn test_hilbert_rtree_add() {
         let mut tree = HilbertRTree::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);
-        tree.add(2.0, 3.0, 2.0, 3.0);
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.add(2.0, 2.0, 3.0, 3.0);
         
         assert_eq!(tree.len(), 2);
         assert!(!tree.is_empty());
@@ -183,41 +165,100 @@ mod tests {
     #[test]
     fn test_hilbert_rtree_build() {
         let mut tree = HilbertRTree::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);
-        tree.add(2.0, 3.0, 2.0, 3.0);
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.add(2.0, 2.0, 3.0, 3.0);
         tree.build();
         
         assert!(tree.built);
     }
 
     #[test]
-    fn test_hilbert_rtree_query_intersecting() {
+    fn test_hilbert_rtree_build_empty() {
         let mut tree = HilbertRTree::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);
-        tree.add(2.0, 3.0, 2.0, 3.0);
-        tree.add(0.5, 1.5, 0.5, 1.5);
-        tree.build();
+        tree.build();  // Build empty tree
         
-        let mut results = Vec::new();
-        tree.query_intersecting(0.7, 1.3, 0.7, 1.3, &mut results);
-        
-        // Should find boxes 0 and 2 (both intersect the query)
-        assert_eq!(results.len(), 2);
-        assert!(results.contains(&0));
-        assert!(results.contains(&2));
+        assert!(tree.is_empty());
+        assert_eq!(tree.len(), 0);
     }
 
     #[test]
-    fn test_hilbert_rtree_query_no_intersections() {
+    fn test_hilbert_rtree_with_capacity() {
+        let tree = HilbertRTree::with_capacity(100);
+        assert!(tree.is_empty());
+        assert_eq!(tree.len(), 0);
+    }
+
+    #[test]
+    fn test_hilbert_rtree_default() {
+        let tree = HilbertRTree::default();
+        assert!(tree.is_empty());
+        assert_eq!(tree.len(), 0);
+    }
+
+    #[test]
+    fn test_hilbert_rtree_extreme_coordinates() {
         let mut tree = HilbertRTree::new();
-        tree.add(0.0, 1.0, 0.0, 1.0);
-        tree.add(5.0, 6.0, 5.0, 6.0);
+        
+        // Test with very large coordinates
+        tree.add(1e10, 1e10, 1e10 + 1.0, 1e10 + 1.0);
+        
+        // Test with very small coordinates
+        tree.add(1e-10, 1e-10, 2e-10, 2e-10);
+        
+        // Test with mixed positive/negative
+        tree.add(-1000.0, -1000.0, -999.0, -999.0);
+        
         tree.build();
         
-        let mut results = Vec::new();
-        tree.query_intersecting(2.0, 3.0, 2.0, 3.0, &mut results);
-        
-        // No boxes intersect the query
-        assert_eq!(results.len(), 0);
+        assert_eq!(tree.len(), 3);
+        assert!(tree.built);
     }
+
+    #[test]
+    fn test_hilbert_rtree_infinite_coordinates() {
+        let mut tree = HilbertRTree::new();
+        
+        // Test with infinite coordinates - should be handled safely
+        tree.add(f64::INFINITY, 0.0, f64::INFINITY, 1.0);
+        tree.add(f64::NEG_INFINITY, 0.0, f64::NEG_INFINITY, 1.0);
+        tree.add(f64::NAN, 0.0, f64::NAN, 1.0);
+        
+        tree.build();  // Should not panic
+        
+        assert_eq!(tree.len(), 3);
+        assert!(tree.built);
+    }
+
+    #[test]
+    fn test_hilbert_rtree_rebuild() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.build();
+        
+        assert!(tree.built);
+        
+        // Add more boxes - should mark as not built
+        tree.add(2.0, 2.0, 3.0, 3.0);
+        assert!(!tree.built);
+        
+        // Rebuild
+        tree.build();
+        assert!(tree.built);
+        assert_eq!(tree.len(), 2);
+    }
+
+    #[test]
+    fn test_hilbert_rtree_clone() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.add(2.0, 2.0, 3.0, 3.0);
+        tree.build();
+        
+        let cloned = tree.clone();
+        
+        assert_eq!(tree.len(), cloned.len());
+        assert_eq!(tree.built, cloned.built);
+        assert_eq!(tree.is_empty(), cloned.is_empty());
+    }
+
 }
