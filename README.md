@@ -28,7 +28,7 @@ aabb = "0.2"
 use aabb::prelude::*;
 
 fn main() {
-    let mut tree = HilbertRTree::new();
+    let mut tree = HilbertRTree::with_capacity(3);
     
     // Add bounding boxes (min_x, min_y, max_x, max_y)
     tree.add(0.0, 0.0, 1.0, 1.0);
@@ -40,6 +40,7 @@ fn main() {
     
     // Query for intersecting boxes
     let mut results = Vec::new();
+    // bbox: xmin, ymin, xmax, ymax 
     tree.query_intersecting(0.7, 0.7, 1.3, 1.3, &mut results);
     
     println!("Found {} intersecting boxes", results.len());
@@ -55,6 +56,7 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 
 ### Construction
 - `HilbertRTree::new()` - Create a new empty tree
+- `HilbertRTree::with_capacity(capacity)` - Create a new tree with preallocated capacity
 - `add(min_x, min_y, max_x, max_y)` - Add a bounding box
 - `build()` - Build the spatial index (required before querying)
 
