@@ -83,7 +83,7 @@ impl HilbertRTree {
         let box_idx = HEADER_SIZE + self.num_items * mem::size_of::<Box>();
         let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut Box;
         unsafe {
-            *box_ptr = Box::new(min_x, min_y, max_x, max_y);
+            std::ptr::write_unaligned(box_ptr, Box::new(min_x, min_y, max_x, max_y));
         }
 
         self.bounds.min_x = self.bounds.min_x.min(min_x);
@@ -136,13 +136,13 @@ impl HilbertRTree {
             let root_idx = HEADER_SIZE + num_items * mem::size_of::<Box>();
             let root_ptr = &mut self.data[root_idx] as *mut u8 as *mut Box;
             unsafe {
-                *root_ptr = self.bounds;
+                std::ptr::write_unaligned(root_ptr, self.bounds);
             }
             
             let indices_start = HEADER_SIZE + total_nodes * mem::size_of::<Box>();
             let indices_ptr = &mut self.data[indices_start + num_items * mem::size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
-                *indices_ptr = 0;
+                std::ptr::write_unaligned(indices_ptr, 0);
             }
             return;
         }
@@ -169,7 +169,7 @@ impl HilbertRTree {
         for i in 0..num_items {
             let idx_ptr = &mut self.data[indices_start + i * mem::size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
-                *idx_ptr = i as u32;
+                std::ptr::write_unaligned(idx_ptr, i as u32);
             }
         }
 
@@ -200,13 +200,13 @@ impl HilbertRTree {
                 let box_idx = HEADER_SIZE + parent_pos * mem::size_of::<Box>();
                 let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut Box;
                 unsafe {
-                    *box_ptr = node_box;
+                    std::ptr::write_unaligned(box_ptr, node_box);
                 }
 
                 // Write parent node index
                 let idx_ptr = &mut self.data[indices_start + parent_pos * mem::size_of::<u32>()] as *mut u8 as *mut u32;
                 unsafe {
-                    *idx_ptr = node_index;
+                    std::ptr::write_unaligned(idx_ptr, node_index);
                 }
 
                 parent_pos += 1;
@@ -339,21 +339,25 @@ impl HilbertRTree {
 
     // --- Private helpers ---
 
-    /// Get box at position
+    /// Get box at position (using slice from_raw_parts - Option 4)
     #[inline]
     fn get_box(&self, pos: usize) -> Box {
         let idx = HEADER_SIZE + pos * mem::size_of::<Box>();
-        let box_ptr = &self.data[idx] as *const u8 as *const Box;
-        unsafe { *box_ptr }
+        let box_slice = unsafe {
+            std::slice::from_raw_parts(&self.data[idx] as *const u8 as *const Box, 1)
+        };
+        box_slice[0]
     }
 
-    /// Get index at position
+    /// Get index at position (using slice from_raw_parts - Option 4)
     #[inline]
     fn get_index(&self, pos: usize) -> u32 {
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
         let indices_start = HEADER_SIZE + total_nodes * mem::size_of::<Box>();
-        let idx_ptr = &self.data[indices_start + pos * mem::size_of::<u32>()] as *const u8 as *const u32;
-        unsafe { *idx_ptr }
+        let idx_slice = unsafe {
+            std::slice::from_raw_parts(&self.data[indices_start + pos * mem::size_of::<u32>()] as *const u8 as *const u32, 1)
+        };
+        idx_slice[0]
     }
 
     /// Get distance along an axis
@@ -452,8 +456,8 @@ impl HilbertRTree {
         let right_ptr = &mut self.data[right_box_idx] as *mut u8 as *mut Box;
         
         unsafe {
-            *left_ptr = right_box;
-            *right_ptr = left_box;
+            std::ptr::write_unaligned(left_ptr, right_box);
+            std::ptr::write_unaligned(right_ptr, left_box);
         }
 
         // Swap indices
@@ -464,10 +468,10 @@ impl HilbertRTree {
         let right_idx_ptr = &mut self.data[indices_start + right * mem::size_of::<u32>()] as *mut u8 as *mut u32;
         
         unsafe {
-            let left_idx = *left_idx_ptr;
-            let right_idx = *right_idx_ptr;
-            *left_idx_ptr = right_idx;
-            *right_idx_ptr = left_idx;
+            let left_idx = std::ptr::read_unaligned(left_idx_ptr);
+            let right_idx = std::ptr::read_unaligned(right_idx_ptr);
+            std::ptr::write_unaligned(left_idx_ptr, right_idx);
+            std::ptr::write_unaligned(right_idx_ptr, left_idx);
         }
     }
 }
