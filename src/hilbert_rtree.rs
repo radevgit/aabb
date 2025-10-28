@@ -139,7 +139,7 @@ impl HilbertRTree {
 
         // Write header
         self.data[0] = 0xfb; // magic
-        self.data[1] = 0x20; // version 2 + double type (8)
+        self.data[1] = 0x01; // version 1 + double type (8)
         self.data[2..4].copy_from_slice(&(node_size as u16).to_le_bytes());
         self.data[4..8].copy_from_slice(&(num_items as u32).to_le_bytes());
 

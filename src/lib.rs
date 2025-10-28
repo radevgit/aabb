@@ -88,20 +88,20 @@
 //! ## Available Query Methods
 //!
 //! ### Basic Spatial Queries
-//! - [`query_intersecting`] - Find boxes that intersect a rectangle
-//! - [`query_intersecting_k`] - Find first K intersecting boxes
-//! - [`query_point`] - Find boxes that contain a point
-//! - [`query_contain`] - Find boxes that contain a rectangle  
-//! - [`query_contained_within`] - Find boxes contained within a rectangle
+//! - [`query_intersecting`] `(f64, i32)` - Find boxes that intersect a rectangle
+//! - [`query_intersecting_k`] `(f64, i32)` - Find first K intersecting boxes
+//! - [`query_point`] `(f64, i32)` - Find boxes that contain a point
+//! - [`query_contain`] `(f64, i32)` - Find boxes that contain a rectangle  
+//! - [`query_contained_within`] `(f64, i32)` - Find boxes contained within a rectangle
 //!
 //! ### Distance-Based Queries
-//! - [`query_nearest`] - Find the single nearest box to a point
-//! - [`query_nearest_k`] - Find K nearest boxes to a point
-//! - [`query_circle`] - Find boxes intersecting a circular region
+//! - [`query_nearest`] `(f64)` - Find the single nearest box to a point
+//! - [`query_nearest_k`] `(f64)` - Find K nearest boxes to a point
+//! - [`query_circle`] `(f64)` - Find boxes intersecting a circular region
 //!
 //! ### Directional Queries  
-//! - [`query_in_direction`] - Find boxes intersecting a rectangle's movement path
-//! - [`query_in_direction_k`] - Find K nearest boxes intersecting a rectangle's movement path
+//! - [`query_in_direction`] `(f64)` - Find boxes intersecting a rectangle's movement path
+//! - [`query_in_direction_k`] `(f64)` - Find K nearest boxes intersecting a rectangle's movement path
 //!
 //! [`query_intersecting`]: HilbertRTree::query_intersecting
 //! [`query_intersecting_k`]: HilbertRTree::query_intersecting_k
@@ -129,6 +129,8 @@
 pub mod hilbert_rtree_leg;
 /// Hierarchical Hilbert R-tree spatial index (flatbush-inspired)
 pub mod hilbert_rtree;
+/// Hierarchical Hilbert R-tree spatial index for i32 coordinates (memory-efficient)
+pub mod hilbert_rtree_i32;
 /// Spatial query implementations for HilbertRTreeLeg (legacy reference implementation)
 #[doc(hidden)]
 pub mod queries;
@@ -141,6 +143,9 @@ pub mod comparison_tests;
 /// Component tests for granular method testing
 #[doc(hidden)]
 pub mod component_tests;
+/// Component tests for HilbertRTreeI32
+#[doc(hidden)]
+pub mod component_tests_i32;
 /// Legacy query tests
 #[doc(hidden)]
 pub mod test_legacy_query;
@@ -150,11 +155,9 @@ pub mod prelude;
 #[doc(hidden)]
 pub use hilbert_rtree_leg::HilbertRTreeLeg;
 pub use hilbert_rtree::HilbertRTree;
+pub use hilbert_rtree_i32::HilbertRTreeI32;
 
-/// Convenient alias for HilbertRTree
-/// 
-/// Allows using `AABB::new()` or `AABB::with_capacity(n)` instead of `HilbertRTree::new()`
-pub type AABB = HilbertRTree;
+pub use prelude::{AABB, AABBI32};
 
 /// Add two unsigned 64-bit integers
 pub fn add(left: u64, right: u64) -> u64 {
