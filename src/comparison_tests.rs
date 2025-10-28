@@ -247,10 +247,12 @@ mod tests {
 
         let (tree_new, tree_leg) = setup_trees(&boxes);
 
-        let result_new = tree_new.query_nearest(15.0, 15.0);
-        let result_leg = tree_leg.query_nearest(15.0, 15.0);
+        let mut results_new = Vec::new();
+        let mut results_leg = Vec::new();
+        tree_new.query_nearest_k(15.0, 15.0, 1, &mut results_new);
+        tree_leg.query_nearest_k(15.0, 15.0, 1, &mut results_leg);
 
-        assert_eq!(result_new, result_leg, "query_nearest results differ");
+        assert_eq!(results_new, results_leg, "query_nearest_k results differ");
     }
 
     #[test]

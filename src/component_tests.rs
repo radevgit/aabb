@@ -733,15 +733,17 @@ mod tests {
         tree.add(50.0, 50.0, 60.0, 60.0);
         tree.build();
 
-        let result = tree.query_nearest(15.0, 15.0);
-        assert_eq!(result, Some(0));
+        let mut results = Vec::new();
+        tree.query_nearest_k(15.0, 15.0, 1, &mut results);
+        assert_eq!(results, vec![0]);
     }
 
     #[test]
     fn test_query_nearest_empty_tree() {
         let tree = HilbertRTree::new();
-        let result = tree.query_nearest(15.0, 15.0);
-        assert_eq!(result, None);
+        let mut results = Vec::new();
+        tree.query_nearest_k(15.0, 15.0, 1, &mut results);
+        assert_eq!(results, vec![]);
     }
 
     #[test]

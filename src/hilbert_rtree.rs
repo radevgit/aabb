@@ -9,7 +9,6 @@
 use std::mem::size_of;
 
 /// Box structure: minX, minY, maxX, maxY
-#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Box {
     pub(crate) min_x: f64,
@@ -484,6 +483,11 @@ impl HilbertRTree {
         while let Some(entry) = queue.pop() {
             // Skip if this node is farther than our kth result
             if entry.dist_sq > max_dist_sq {
+                // Early exit: once we have k results and current node is too far,
+                // all remaining nodes in the priority queue are even farther
+                if result_heap.len() == k {
+                    break;
+                }
                 continue;
             }
 
@@ -580,12 +584,19 @@ impl HilbertRTree {
             }
         }
 
-        // Extract results from heap and sort
+        // Extract results and sort by distance (ascending)
         results.clear();
-        while let Some(entry) = result_heap.pop() {
-            results.push(entry.idx as usize);
+        let mut distance_pairs: Vec<(f64, u32)> = result_heap
+            .into_iter()
+            .map(|entry| (entry.dist_sq, entry.idx))
+            .collect();
+        
+        // Sort by distance ascending - this is already a partial sort since we only have k elements
+        distance_pairs.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
+        
+        for (_, idx) in distance_pairs {
+            results.push(idx as usize);
         }
-        results.reverse(); // Reverse to get ascending order by distance
     }
 
     /// Finds all boxes that contain a specific point.
@@ -638,7 +649,7 @@ impl HilbertRTree {
                 }
                 
                 let index = self.get_index(pos);
-                if node_index >= self.num_items {
+                if pos >= self.num_items {
                     queue.push((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
@@ -704,7 +715,7 @@ impl HilbertRTree {
                    node_box.min_y <= min_y && node_box.max_y >= max_y {
                     
                     let index = self.get_index(pos);
-                    if node_index >= self.num_items {
+                    if pos >= self.num_items {
                         queue.push((index >> 2) as usize);
                     } else {
                         results.push(index as usize);
@@ -766,7 +777,7 @@ impl HilbertRTree {
             for pos in node_index..end_pos {
                 let node_box = self.get_box(pos);
                 
-                if node_index >= self.num_items {
+                if pos >= self.num_items {
                     // This is a parent node - check if it could have matching children
                     // (any overlap with query region)
                     if node_box.max_x >= min_x && node_box.max_y >= min_y &&
@@ -790,59 +801,6 @@ impl HilbertRTree {
             
             node_index = queue.remove(0);
         }
-    }
-
-    /// Finds the single nearest box to a point using Euclidean distance.
-    ///
-    /// This query finds the closest box to a given point and returns its index.
-    /// Distance is computed as the shortest distance from the point to any point
-    /// on the box's boundary (0 if the point is inside). This is useful for
-    /// single-object picking, nearest neighbor queries, or closest object lookups.
-    ///
-    /// # Arguments
-    /// * `x` - X coordinate of the query point
-    /// * `y` - Y coordinate of the query point
-    ///
-    /// # Returns
-    /// `Some(index)` if the tree is non-empty, containing the index of the nearest box,
-    /// or `None` if the tree is empty.
-    ///
-    /// # Example
-    /// ```
-    /// use aabb::prelude::*;
-    /// let mut tree = AABB::with_capacity(2);
-    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
-    /// tree.add(5.0, 5.0, 6.0, 6.0);  // Box 1
-    /// tree.build();
-    ///
-    /// if let Some(nearest) = tree.query_nearest(0.5, 0.5) {
-    ///     // `nearest` is 0 (closest to the query point)
-    /// }
-    /// ```
-    pub fn query_nearest(&self, x: f64, y: f64) -> Option<usize> {
-        if self.num_items == 0 || self.level_bounds.is_empty() {
-            return None;
-        }
-
-        let mut min_dist_bits = u64::MAX;
-        let mut result = None;
-
-        // Check all leaf nodes
-        let num_leaves = self.level_bounds[0];
-        for pos in 0..num_leaves {
-            let node_box = self.get_box(pos);
-            let dx = self.axis_distance(x, node_box.min_x, node_box.max_x);
-            let dy = self.axis_distance(y, node_box.min_y, node_box.max_y);
-            let dist_sq = dx * dx + dy * dy;
-            let dist_bits = dist_sq.to_bits();
-
-            if dist_bits < min_dist_bits {
-                min_dist_bits = dist_bits;
-                result = Some(self.get_index(pos) as usize);
-            }
-        }
-
-        result
     }
 
     /// Finds the first K intersecting boxes within a rectangular region.
@@ -984,7 +942,7 @@ impl HilbertRTree {
 
                 if dist_sq <= radius_sq {
                     let index = self.get_index(pos);
-                    if node_index >= self.num_items {
+                    if pos >= self.num_items {
                         queue.push((index >> 2) as usize);
                     } else {
                         results.push(index as usize);
@@ -1086,7 +1044,7 @@ impl HilbertRTree {
                 }
                 
                 let index = self.get_index(pos);
-                if node_index >= self.num_items {
+                if pos >= self.num_items {
                     queue.push((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
@@ -1210,12 +1168,24 @@ impl HilbertRTree {
             }
         }
 
-        // Sort by distance along direction and take first K
-        candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        
+        // Partial sort: get K smallest elements by distance
         results.clear();
-        for (_, idx) in candidates.iter().take(k) {
-            results.push(*idx);
+        
+        if candidates.len() <= k {
+            // Fewer candidates than K, just sort all
+            candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            for (_, idx) in candidates {
+                results.push(idx);
+            }
+        } else {
+            // More candidates than K, use partial sort
+            candidates.select_nth_unstable_by(k - 1, |a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            // Now split at position k and sort only the K elements
+            let (k_smallest, _) = candidates.split_at_mut(k);
+            k_smallest.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            for (_, idx) in k_smallest {
+                results.push(*idx);
+            }
         }
     }
 

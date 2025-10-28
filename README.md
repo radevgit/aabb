@@ -74,7 +74,6 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 
 #### Distance-Based Queries
 - `query_nearest_k(x, y, k, results)` `(f64)` - Find K nearest boxes to a point
-- `query_nearest(x, y) -> Option<usize>` `(f64)` - Find the single nearest box to a point
 - `query_circle(center_x, center_y, radius, results)` `(f64)` - Find boxes intersecting a circular region
 
 #### Directional Queries

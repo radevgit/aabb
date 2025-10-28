@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.0] - 2025-10-28
+- Significant performance optimizations on nearest_k and intersect_k methods.
+- merge of some methods.
+- added benchmarks
+
 ## [0.5.0] - 2025-10-28
 - Implemented methods for i32 types
 

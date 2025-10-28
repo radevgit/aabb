@@ -58,9 +58,10 @@
 //! tree.query_intersecting_k(0.0, 0.0, 3.0, 3.0, 2, &mut results);
 //! println!("First 2 intersecting boxes: {:?}", results);
 //!
-//! // Nearest neighbor queries
-//! let nearest = tree.query_nearest(2.0, 2.0);
-//! println!("Nearest box to (2.0, 2.0): {:?}", nearest);
+//! // K-nearest neighbor queries - use k=1 for single nearest
+//! results.clear();
+//! tree.query_nearest_k(2.0, 2.0, 1, &mut results);
+//! println!("Nearest box to (2.0, 2.0): {:?}", results);
 //!
 //! // Distance-based queries - find boxes in circular region
 //! results.clear();
@@ -95,8 +96,7 @@
 //! - [`query_contained_within`] `(f64, i32)` - Find boxes contained within a rectangle
 //!
 //! ### Distance-Based Queries
-//! - [`query_nearest`] `(f64)` - Find the single nearest box to a point
-//! - [`query_nearest_k`] `(f64)` - Find K nearest boxes to a point
+//! - [`query_nearest_k`] `(f64)` - Find K nearest boxes to a point (use k=1 for single nearest)
 //! - [`query_circle`] `(f64)` - Find boxes intersecting a circular region
 //!
 //! ### Directional Queries  
@@ -108,7 +108,6 @@
 //! [`query_point`]: HilbertRTree::query_point
 //! [`query_contain`]: HilbertRTree::query_contain
 //! [`query_contained_within`]: HilbertRTree::query_contained_within
-//! [`query_nearest`]: HilbertRTree::query_nearest
 //! [`query_nearest_k`]: HilbertRTree::query_nearest_k
 //! [`query_circle`]: HilbertRTree::query_circle
 //! [`query_in_direction`]: HilbertRTree::query_in_direction

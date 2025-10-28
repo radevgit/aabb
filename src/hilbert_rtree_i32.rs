@@ -19,7 +19,6 @@
 use std::mem::size_of;
 
 /// Box structure: minX, minY, maxX, maxY (16 bytes total for i32)
-#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct BoxI32 {
     pub(crate) min_x: i32,

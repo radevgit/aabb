@@ -137,6 +137,146 @@ fn main() {
         );
     }
 
+    // Profile query_point
+    println!("\nProfiling query_point:");
+    println!("{}", "-".repeat(40));
+
+    let num_queries = num_tests * 10; // More iterations for fast queries
+    let query_start = Instant::now();
+    for i in 0..num_queries {
+        results.clear();
+        let x = coords[4 * (i % num_tests)];
+        let y = coords[4 * (i % num_tests) + 1];
+        tree.query_point(x, y, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries:               {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_queries,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_queries as f64,
+        results.len() as f64
+    );
+
+    // Profile query_intersecting_k
+    println!("\nProfiling query_intersecting_k:");
+    println!("{}", "-".repeat(40));
+
+    let num_queries = num_tests * 10; // More iterations for fast queries
+    let query_start = Instant::now();
+    for i in 0..num_queries {
+        results.clear();
+        let (min_x, min_y, max_x, max_y) = test_queries_small[i % num_tests];
+        tree.query_intersecting_k(min_x, min_y, max_x, max_y, 100, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries k=100 (small): {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_queries,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_queries as f64,
+        results.len() as f64
+    );
+
+    // Profile query_contain (find big boxes that contain the query area)
+    // Create specific test queries that look for containing boxes
+    // Use point-like queries within the space to find boxes that would contain them
+    println!("\nProfiling query_contain:");
+    println!("{}", "-".repeat(40));
+
+    let num_queries = num_tests;
+    let query_start = Instant::now();
+    for _ in 0..num_queries {
+        results.clear();
+        // Query a tiny rectangle at random points
+        let x = rng.random_range(0.0..100.0);
+        let y = rng.random_range(0.0..100.0);
+        tree.query_contain(x, y, x + 0.01, y + 0.01, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries (point-like):  {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_queries,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_queries as f64,
+        results.len() as f64
+    );
+
+    // Profile query_contained_within (find small boxes within the query area)
+    println!("\nProfiling query_contained_within:");
+    println!("{}", "-".repeat(40));
+
+    let num_queries = num_tests;
+    let query_start = Instant::now();
+    for (min_x, min_y, max_x, max_y) in &test_queries_small {
+        results.clear();
+        tree.query_contained_within(*min_x, *min_y, *max_x, *max_y, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries (small):       {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_queries,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_queries as f64,
+        results.len() as f64
+    );
+
+    // Profile query_circle
+    println!("\nProfiling query_circle:");
+    println!("{}", "-".repeat(40));
+
+    let query_start = Instant::now();
+    for i in 0..num_tests {
+        results.clear();
+        let x = coords[4 * i];
+        let y = coords[4 * i + 1];
+        tree.query_circle(x, y, 5.0, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries (radius=5):    {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_tests,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_tests as f64,
+        results.len() as f64
+    );
+
+    // Profile query_in_direction
+    println!("\nProfiling query_in_direction:");
+    println!("{}", "-".repeat(40));
+
+    let query_start = Instant::now();
+    for (min_x, min_y, max_x, max_y) in &test_queries_small {
+        results.clear();
+        tree.query_in_direction(*min_x, *min_y, *max_x, *max_y, 1.0, 0.0, 10.0, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries (small):       {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_tests,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_tests as f64,
+        results.len() as f64
+    );
+
+    // Profile query_in_direction_k
+    println!("\nProfiling query_in_direction_k:");
+    println!("{}", "-".repeat(40));
+
+    let query_start = Instant::now();
+    for (min_x, min_y, max_x, max_y) in &test_queries_small {
+        results.clear();
+        tree.query_in_direction_k(*min_x, *min_y, *max_x, *max_y, 1.0, 0.0, 50, 10.0, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries k=50 (small):  {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_tests,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_tests as f64,
+        results.len() as f64
+    );
+
     println!("\n{}", "=".repeat(50));
     println!("\nSummary:");
     println!("--------");
@@ -146,6 +286,8 @@ fn main() {
 
 
 /*
+cargo bench --bench profile_bench
+
 Generating 1000000 random boxes...
   Generated in 22.23ms
 
@@ -156,17 +298,46 @@ Building index...
 
 Profiling query_intersecting:
 ----------------------------------------
-  1000 small queries (1%):    4.48ms (4.478µs/query)
-  1000 large queries (10%):   1893.00ms (1893.003µs/query)
+  1000 small queries (1%):    4.24ms (4.236µs/query)
+  1000 large queries (10%):   1805.40ms (1805.402µs/query)
 
 Profiling query_nearest_k:
 ----------------------------------------
-  1000 queries k=1:          9.70ms (9.695µs/query, avg 1.0 results)
-  1000 queries k=10:          10.53ms (10.532µs/query, avg 10.0 results)
-  1000 queries k=100:          20.98ms (20.980µs/query, avg 100.0 results)
-  100 queries k=1000:          11.74ms (117.446µs/query, avg 1000.0 results)
+  1000 queries k=1:          6.55ms (6.545µs/query, avg 1.0 results)
+  1000 queries k=10:          6.71ms (6.706µs/query, avg 10.0 results)
+  1000 queries k=100:          14.77ms (14.768µs/query, avg 100.0 results)
+  100 queries k=1000:          8.34ms (83.359µs/query, avg 1000.0 results)
+
+Profiling query_point:
+----------------------------------------
+  10000 queries:               11.42ms (1.142µs/query, avg 24.0 results)
+
+Profiling query_intersecting_k:
+----------------------------------------
+  10000 queries k=100 (small): 17.95ms (1.795µs/query, avg 100.0 results)
+
+Profiling query_contain:
+----------------------------------------
+  1000 queries (point-like):  1.76ms (1.759µs/query, avg 21.0 results)
+
+Profiling query_contained_within:
+----------------------------------------
+  1000 queries (small):       2.67ms (2.674µs/query, avg 28.0 results)
+
+Profiling query_circle:
+----------------------------------------
+  1000 queries (radius=5):    64.67ms (64.674µs/query, avg 8830.0 results)
+
+Profiling query_in_direction:
+----------------------------------------
+  1000 queries (small):       14.61ms (14.606µs/query, avg 1752.0 results)
+
+Profiling query_in_direction_k:
+----------------------------------------
+  1000 queries k=50 (small):  20.01ms (20.009µs/query, avg 50.0 results)
 
 ==================================================
+
 
 
 */
