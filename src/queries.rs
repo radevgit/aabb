@@ -451,7 +451,7 @@ impl HilbertRTreeLeg {
     /// tree.build();
     /// 
     /// let mut results = Vec::new();
-    /// tree.query_within_distance(1.5, 1.5, 1.0, &mut results);
+    /// tree.query_circle(1.5, 1.5, 1.0, &mut results);
     /// // Should find first box (distance ~0.7) but not second box
     /// ```
     pub fn query_within_distance(&self, x: f64, y: f64, max_distance: f64, results: &mut Vec<usize>) {
