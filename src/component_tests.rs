@@ -674,20 +674,20 @@ mod tests {
     }
 
     #[test]
-    fn test_query_containing_basic() {
+    fn test_query_contain_basic() {
         let mut tree = HilbertRTree::new();
         tree.add(5.0, 5.0, 25.0, 25.0);
         tree.add(30.0, 30.0, 40.0, 40.0);
         tree.build();
 
         let mut results = Vec::new();
-        tree.query_containing(10.0, 10.0, 20.0, 20.0, &mut results);
+        tree.query_contain(10.0, 10.0, 20.0, 20.0, &mut results);
         results.sort();
         assert_eq!(results, vec![0]);
     }
 
     #[test]
-    fn test_query_containing_multiple() {
+    fn test_query_contain_multiple() {
         let mut tree = HilbertRTree::new();
         tree.add(0.0, 0.0, 50.0, 50.0);
         tree.add(10.0, 10.0, 40.0, 40.0);
@@ -695,33 +695,33 @@ mod tests {
         tree.build();
 
         let mut results = Vec::new();
-        tree.query_containing(20.0, 20.0, 30.0, 30.0, &mut results);
+        tree.query_contain(20.0, 20.0, 30.0, 30.0, &mut results);
         results.sort();
         assert_eq!(results.len(), 2);
     }
 
     #[test]
-    fn test_query_contained_by_basic() {
+    fn test_query_contained_within_basic() {
         let mut tree = HilbertRTree::new();
         tree.add(15.0, 15.0, 25.0, 25.0);
         tree.add(30.0, 30.0, 40.0, 40.0);
         tree.build();
 
         let mut results = Vec::new();
-        tree.query_contained_by(10.0, 10.0, 50.0, 50.0, &mut results);
+        tree.query_contained_within(10.0, 10.0, 50.0, 50.0, &mut results);
         results.sort();
         assert_eq!(results, vec![0, 1]);
     }
 
     #[test]
-    fn test_query_contained_by_partial() {
+    fn test_query_contained_within_partial() {
         let mut tree = HilbertRTree::new();
         tree.add(5.0, 5.0, 25.0, 25.0);
         tree.add(30.0, 30.0, 40.0, 40.0);
         tree.build();
 
         let mut results = Vec::new();
-        tree.query_contained_by(10.0, 10.0, 50.0, 50.0, &mut results);
+        tree.query_contained_within(10.0, 10.0, 50.0, 50.0, &mut results);
         results.sort();
         assert_eq!(results, vec![1]);  // Only box 1 (30,30)-(40,40) is contained in (10,10)-(50,50)
     }
@@ -766,34 +766,6 @@ mod tests {
         let mut results = Vec::new();
         tree.query_intersecting_k(15.0, 15.0, 25.0, 25.0, 0, &mut results);
         assert_eq!(results.len(), 0);
-    }
-
-    #[test]
-    fn test_query_within_distance_basic() {
-        let mut tree = HilbertRTree::new();
-        tree.add(10.0, 10.0, 12.0, 12.0);
-        tree.add(50.0, 50.0, 52.0, 52.0);
-        tree.build();
-
-        let mut results = Vec::new();
-        tree.query_within_distance(11.0, 11.0, 10.0, &mut results);
-        results.sort();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0], 0);
-    }
-
-    #[test]
-    fn test_query_within_distance_multiple() {
-        let mut tree = HilbertRTree::new();
-        tree.add(0.0, 0.0, 2.0, 2.0);
-        tree.add(3.0, 3.0, 5.0, 5.0);
-        tree.add(50.0, 50.0, 52.0, 52.0);
-        tree.build();
-
-        let mut results = Vec::new();
-        tree.query_within_distance(1.0, 1.0, 10.0, &mut results);
-        results.sort();
-        assert!(results.len() >= 2);
     }
 
     #[test]

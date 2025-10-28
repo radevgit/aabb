@@ -252,7 +252,32 @@ impl HilbertRTree {
 
     /// Internal: Generic tree traversal for queries
 
-    /// Query for boxes intersecting the given rectangle
+    /// Finds all boxes that intersect with a given rectangular region.
+    ///
+    /// This query returns all boxes whose bounding boxes overlap with the query rectangle,
+    /// including boxes that merely touch at edges or corners. This is useful for broad-phase
+    /// collision detection, finding objects in a viewport, or spatial filtering.
+    ///
+    /// # Arguments
+    /// * `min_x` - Left edge of query rectangle
+    /// * `min_y` - Bottom edge of query rectangle
+    /// * `max_x` - Right edge of query rectangle
+    /// * `max_y` - Top edge of query rectangle
+    /// * `results` - Output vector; will be cleared and populated with matching box indices
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(3);
+    /// tree.add(0.0, 0.0, 2.0, 2.0);  // Box 0
+    /// tree.add(1.0, 1.0, 3.0, 3.0);  // Box 1
+    /// tree.add(4.0, 4.0, 5.0, 5.0);  // Box 2
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_intersecting(0.5, 0.5, 2.5, 2.5, &mut results);
+    /// // Results include box 0 and 1 (both intersect the query rectangle)
+    /// ```
     pub fn query_intersecting(
         &self,
         min_x: f64,
@@ -304,7 +329,33 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for K nearest neighbor boxes to a point
+    /// Finds the K nearest boxes to a point using Euclidean distance.
+    ///
+    /// This query efficiently finds the K closest boxes to a given point by computing
+    /// the distance from the point to each box (distance to nearest point in box).
+    /// Boxes containing the point have distance 0. This is useful for finding nearby
+    /// objects, KNN queries, or closest match lookups.
+    ///
+    /// # Arguments
+    /// * `point_x` - X coordinate of the query point
+    /// * `point_y` - Y coordinate of the query point
+    /// * `k` - Number of nearest boxes to find
+    /// * `results` - Output vector; will be cleared and populated with K nearest box indices,
+    ///              sorted by distance (closest first)
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(3);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
+    /// tree.add(2.0, 2.0, 3.0, 3.0);  // Box 1
+    /// tree.add(5.0, 5.0, 6.0, 6.0);  // Box 2
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_nearest_k(0.0, 0.0, 2, &mut results);
+    /// // Results contain the 2 nearest boxes
+    /// ```
     pub fn query_nearest_k(
         &self,
         point_x: f64,
@@ -347,7 +398,31 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for boxes that contain a specific point
+    /// Finds all boxes that contain a specific point.
+    ///
+    /// This query returns all boxes whose boundaries include the given point.
+    /// A point on the edge or corner of a box is considered contained (inclusive test).
+    /// This is useful for hit testing, picking objects at a screen location, or
+    /// determining which regions contain a specific coordinate.
+    ///
+    /// # Arguments
+    /// * `x` - X coordinate of the query point
+    /// * `y` - Y coordinate of the query point
+    /// * `results` - Output vector; will be cleared and populated with indices of all
+    ///              boxes that contain the point
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add(0.0, 0.0, 2.0, 2.0);  // Box 0
+    /// tree.add(1.0, 1.0, 3.0, 3.0);  // Box 1
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_point(1.5, 1.5, &mut results);
+    /// // Results contain both box 0 and box 1 (point is inside both)
+    /// ```
     pub fn query_point(&self, x: f64, y: f64, results: &mut Vec<usize>) {
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
@@ -388,8 +463,35 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for boxes that completely contain a given rectangle
-    pub fn query_containing(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
+    /// Finds all boxes that completely contain a given rectangular region.
+    ///
+    /// This query returns all boxes whose boundaries fully enclose the query rectangle.
+    /// The query rectangle must be fully contained within each result box for inclusion.
+    /// This is useful for finding container regions, parent regions, or areas that
+    /// fully cover a given space.
+    ///
+    /// # Arguments
+    /// * `min_x` - Left edge of query rectangle
+    /// * `min_y` - Bottom edge of query rectangle
+    /// * `max_x` - Right edge of query rectangle
+    /// * `max_y` - Top edge of query rectangle
+    /// * `results` - Output vector; will be cleared and populated with indices of boxes
+    ///              that completely contain the query rectangle
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(3);
+    /// tree.add(0.0, 0.0, 5.0, 5.0);  // Box 0 (large)
+    /// tree.add(1.0, 1.0, 4.0, 4.0);  // Box 1 (medium)
+    /// tree.add(6.0, 6.0, 8.0, 8.0);  // Box 2 (separate)
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_contain(1.5, 1.5, 3.5, 3.5, &mut results);
+    /// // Results contain box 0 and box 1 (both contain the query rectangle)
+    /// ```
+    pub fn query_contain(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
@@ -428,8 +530,35 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for boxes that are contained within a given rectangle
-    pub fn query_contained_by(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
+    /// Finds all boxes that are completely contained within a given rectangle.
+    ///
+    /// This query returns all boxes that fit entirely within the query rectangle's boundaries.
+    /// Each result box must be fully contained for inclusion. This is the opposite of
+    /// `query_contain` and is useful for finding items within a region, filtering
+    /// objects by area, or identifying sub-regions.
+    ///
+    /// # Arguments
+    /// * `min_x` - Left edge of query rectangle
+    /// * `min_y` - Bottom edge of query rectangle
+    /// * `max_x` - Right edge of query rectangle
+    /// * `max_y` - Top edge of query rectangle
+    /// * `results` - Output vector; will be cleared and populated with indices of boxes
+    ///              that are completely contained within the query rectangle
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(3);
+    /// tree.add(0.0, 0.0, 5.0, 5.0);  // Box 0 (large)
+    /// tree.add(1.0, 1.0, 2.0, 2.0);  // Box 1 (small, inside)
+    /// tree.add(6.0, 6.0, 8.0, 8.0);  // Box 2 (outside)
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_contained_within(0.5, 0.5, 4.5, 4.5, &mut results);
+    /// // Results contain only box 1 (box 0 is too large, box 2 is outside)
+    /// ```
+    pub fn query_contained_within(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
@@ -473,7 +602,33 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for the single nearest box to a point
+    /// Finds the single nearest box to a point using Euclidean distance.
+    ///
+    /// This query finds the closest box to a given point and returns its index.
+    /// Distance is computed as the shortest distance from the point to any point
+    /// on the box's boundary (0 if the point is inside). This is useful for
+    /// single-object picking, nearest neighbor queries, or closest object lookups.
+    ///
+    /// # Arguments
+    /// * `x` - X coordinate of the query point
+    /// * `y` - Y coordinate of the query point
+    ///
+    /// # Returns
+    /// `Some(index)` if the tree is non-empty, containing the index of the nearest box,
+    /// or `None` if the tree is empty.
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
+    /// tree.add(5.0, 5.0, 6.0, 6.0);  // Box 1
+    /// tree.build();
+    ///
+    /// if let Some(nearest) = tree.query_nearest(0.5, 0.5) {
+    ///     // `nearest` is 0 (closest to the query point)
+    /// }
+    /// ```
     pub fn query_nearest(&self, x: f64, y: f64) -> Option<usize> {
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return None;
@@ -500,7 +655,36 @@ impl HilbertRTree {
         result
     }
 
-    /// Query for first K intersecting boxes (stops after K results)
+    /// Finds the first K intersecting boxes within a rectangular region.
+    ///
+    /// This query finds boxes intersecting a query rectangle and stops after collecting K results.
+    /// Unlike `query_intersecting` which finds all matches, this variant returns early when K
+    /// results are found, making it more efficient when only a limited number of results are needed.
+    /// Results are included in the order they are encountered during tree traversal.
+    ///
+    /// # Arguments
+    /// * `min_x` - Left edge of query rectangle
+    /// * `min_y` - Bottom edge of query rectangle
+    /// * `max_x` - Right edge of query rectangle
+    /// * `max_y` - Top edge of query rectangle
+    /// * `k` - Maximum number of results to return
+    /// * `results` - Output vector; will be cleared and populated with up to K matching box indices
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(5);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
+    /// tree.add(0.5, 0.5, 1.5, 1.5);  // Box 1
+    /// tree.add(1.0, 1.0, 2.0, 2.0);  // Box 2
+    /// tree.add(1.5, 1.5, 2.5, 2.5);  // Box 3
+    /// tree.add(4.0, 4.0, 5.0, 5.0);  // Box 4
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_intersecting_k(0.0, 0.0, 2.0, 2.0, 2, &mut results);
+    /// // Results contain at most 2 of the intersecting boxes
+    /// ```
     pub fn query_intersecting_k(
         &self,
         min_x: f64,
@@ -557,49 +741,33 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for boxes within a distance of a point
-    pub fn query_within_distance(&self, x: f64, y: f64, max_distance: f64, results: &mut Vec<usize>) {
-        if self.num_items == 0 || self.level_bounds.is_empty() || max_distance < 0.0 {
-            results.clear();
-            return;
-        }
-
-        results.clear();
-        
-        let max_dist_sq = max_distance * max_distance;
-        let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
-        
-        loop {
-            let node_end = self.upper_bound(node_index);
-            let end_pos = (node_index + self.node_size).min(node_end);
-            
-            for pos in node_index..end_pos {
-                let node_box = self.get_box(pos);
-                let dx = self.axis_distance(x, node_box.min_x, node_box.max_x);
-                let dy = self.axis_distance(y, node_box.min_y, node_box.max_y);
-                let dist_sq = dx * dx + dy * dy;
-
-                if dist_sq <= max_dist_sq {
-                    let index = self.get_index(pos);
-                    if node_index >= self.num_items {
-                        queue.push((index >> 2) as usize);
-                    } else {
-                        results.push(index as usize);
-                    }
-                }
-            }
-            
-            if queue.is_empty() {
-                break;
-            }
-            
-            node_index = queue.remove(0);
-        }
-    }
-
-    /// Query for boxes intersecting a circular region
+    /// Finds all boxes that intersect with a circular region.
+    ///
+    /// This query returns all boxes whose bounding boxes intersect with the circle
+    /// centered at `(center_x, center_y)` with the given `radius`. The distance check
+    /// uses the Euclidean distance from the circle's center to the nearest point in each box.
+    /// This is useful for circular range queries, area-of-effect searches, and radial filtering.
+    ///
+    /// # Arguments
+    /// * `center_x` - X coordinate of circle center
+    /// * `center_y` - Y coordinate of circle center
+    /// * `radius` - Radius of the circular region
+    /// * `results` - Output vector; will be cleared and populated with indices of all boxes
+    ///              intersecting the circular region
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(3);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
+    /// tree.add(1.0, 1.0, 2.0, 2.0);  // Box 1
+    /// tree.add(5.0, 5.0, 6.0, 6.0);  // Box 2
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_circle(1.0, 1.0, 1.5, &mut results);
+    /// // Results include boxes 0 and 1 (within circle), but not box 2
+    /// ```
     pub fn query_circle(&self, center_x: f64, center_y: f64, radius: f64, results: &mut Vec<usize>) {
         if self.num_items == 0 || self.level_bounds.is_empty() || radius < 0.0 {
             results.clear();
@@ -642,7 +810,39 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for boxes in a directional path (rectangle moving in direction)
+    /// Finds all boxes that intersect with a rectangle's directional movement path.
+    ///
+    /// This query simulates moving a rectangle from its initial position in a given direction
+    /// for a specified distance, and returns all boxes intersecting the swept path. The sweep
+    /// region is the bounding box of the rectangle at its start and end positions.
+    /// This is useful for collision detection along movement paths, ray casting, and
+    /// predictive spatial queries (e.g., finding obstacles in a moving object's path).
+    ///
+    /// # Arguments
+    /// * `min_x` - Left edge of the rectangle
+    /// * `min_y` - Bottom edge of the rectangle
+    /// * `max_x` - Right edge of the rectangle
+    /// * `max_y` - Top edge of the rectangle
+    /// * `dir_x` - X component of movement direction vector
+    /// * `dir_y` - Y component of movement direction vector
+    /// * `distance` - Distance to move in the direction (direction is normalized internally)
+    /// * `results` - Output vector; will be cleared and populated with indices of all boxes
+    ///              intersecting the swept movement path
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(3);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
+    /// tree.add(3.0, 0.0, 4.0, 1.0);  // Box 1 (in the path)
+    /// tree.add(5.0, 5.0, 6.0, 6.0);  // Box 2 (not in the path)
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// // Move rectangle from (0,0)-(1,1) to the right for distance 3
+    /// tree.query_in_direction(0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 3.0, &mut results);
+    /// // Results include boxes 0 and 1
+    /// ```
     pub fn query_in_direction(
         &self,
         min_x: f64,
@@ -711,7 +911,42 @@ impl HilbertRTree {
         }
     }
 
-    /// Query for K nearest boxes in a directional path
+    /// Finds the K nearest boxes intersecting a rectangle's directional movement path.
+    ///
+    /// This query finds boxes that intersect with a moving rectangle's swept path and
+    /// returns the K closest ones ordered by distance along the movement direction.
+    /// Distance is computed as the projection of each box's center onto the normalized
+    /// direction vector, making results ordered by "how far along the path" each box is.
+    /// This is useful for ordered collision detection, finding the closest obstacles
+    /// in a movement path, or sequential hit detection in a sweep.
+    ///
+    /// # Arguments
+    /// * `min_x` - Left edge of the rectangle
+    /// * `min_y` - Bottom edge of the rectangle
+    /// * `max_x` - Right edge of the rectangle
+    /// * `max_y` - Top edge of the rectangle
+    /// * `dir_x` - X component of movement direction vector
+    /// * `dir_y` - Y component of movement direction vector
+    /// * `k` - Maximum number of results to return
+    /// * `distance` - Distance to move in the direction (direction is normalized internally)
+    /// * `results` - Output vector; will be cleared and populated with up to K nearest box indices
+    ///              sorted by distance along the movement direction
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(4);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);  // Box 0
+    /// tree.add(2.0, 0.0, 3.0, 1.0);  // Box 1 (first in path)
+    /// tree.add(4.0, 0.0, 5.0, 1.0);  // Box 2 (second in path)
+    /// tree.add(6.0, 6.0, 7.0, 7.0);  // Box 3 (not in path)
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// // Move rectangle right, find 2 nearest obstacles
+    /// tree.query_in_direction_k(0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 2, 10.0, &mut results);
+    /// // Results contain boxes 1 and 2 (ordered by distance along direction)
+    /// ```
     pub fn query_in_direction_k(
         &self,
         min_x: f64,

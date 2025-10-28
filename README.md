@@ -10,6 +10,7 @@ A Rust library providing a simple and efficient Hilbert R-tree implementation fo
 
 - **Hilbert Curve Ordering**: Uses Hilbert space-filling curve for improved spatial locality
 - **AABB Intersection Queries**: Fast rectangular bounding box intersection testing
+- **Zero-Copy**: Single contiguous buffer layout - safe for parallel queries with no allocations per query
 - **Simple API**: Easy to use with minimal setup
 - **Static Optimization**: Efficient for static or infrequently-modified spatial data
 
@@ -19,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-aabb = "0.3"
+aabb = "0.4"
 ```
 
 ### Basic Example
@@ -28,7 +29,7 @@ aabb = "0.3"
 use aabb::prelude::*;
 
 fn main() {
-    let mut tree = HilbertRTree::with_capacity(3);
+    let mut tree = AABB::with_capacity(3);
     
     // Add bounding boxes (min_x, min_y, max_x, max_y)
     tree.add(0.0, 0.0, 1.0, 1.0);
@@ -55,8 +56,8 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 ## API Reference
 
 ### Construction
-- `HilbertRTree::new()` - Create a new empty tree
-- `HilbertRTree::with_capacity(capacity)` - Create a new tree with preallocated capacity
+- `HilbertRTree::new()` or `AABB::new()` - Create a new empty tree
+- `HilbertRTree::with_capacity(capacity)` or `AABB::with_capacity(capacity)` - Create a new tree with preallocated capacity
 - `add(min_x, min_y, max_x, max_y)` - Add a bounding box
 - `build()` - Build the spatial index (required before querying)
 
@@ -66,18 +67,37 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 - `query_intersecting(min_x, min_y, max_x, max_y, results)` - Find boxes that intersect a rectangle
 - `query_intersecting_k(min_x, min_y, max_x, max_y, k, results)` - Find first K intersecting boxes
 - `query_point(x, y, results)` - Find boxes that contain a point
-- `query_containing(min_x, min_y, max_x, max_y, results)` - Find boxes that contain a rectangle
-- `query_contained_by(min_x, min_y, max_x, max_y, results)` - Find boxes contained within a rectangle
+- `query_contain(min_x, min_y, max_x, max_y, results)` - Find boxes that contain a rectangle
+- `query_contained_within(min_x, min_y, max_x, max_y, results)` - Find boxes contained within a rectangle
 
 #### Distance-Based Queries
 - `query_nearest_k(x, y, k, results)` - Find K nearest boxes to a point
 - `query_nearest(x, y) -> Option<usize>` - Find the single nearest box to a point
-- `query_within_distance(x, y, max_distance, results)` - Find boxes within distance of a point
 - `query_circle(center_x, center_y, radius, results)` - Find boxes intersecting a circular region
 
 #### Directional Queries
 - `query_in_direction(rect_min_x, rect_min_y, rect_max_x, rect_max_y, direction_x, direction_y, distance, results)` - Find boxes intersecting a rectangle's movement path
 - `query_in_direction_k(rect_min_x, rect_min_y, rect_max_x, rect_max_y, direction_x, direction_y, k, distance, results)` - Find K nearest boxes intersecting a rectangle's movement path
+
+## Examples
+
+Minimal examples for each query method are available in the `examples/` directory:
+
+- `query_intersecting` - Find boxes intersecting a rectangle
+- `query_intersecting_k` - Find K first intersecting boxes
+- `query_point` - Find boxes containing a point
+- `query_contain` - Find boxes containing a rectangle
+- `query_contained_within` - Find boxes inside a rectangle
+- `query_nearest` - Find the single nearest box
+- `query_nearest_k` - Find K nearest boxes
+- `query_circle` - Find boxes in a circular region
+- `query_in_direction` - Find boxes in a movement path
+- `query_in_direction_k` - Find K nearest in a movement path
+
+Run any example with:
+```bash
+cargo run --example query_point
+```
 
 ## Performance
 

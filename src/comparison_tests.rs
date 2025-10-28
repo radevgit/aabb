@@ -190,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_containing_consistency() {
+    fn test_query_contain_consistency() {
         let boxes = vec![
             (5.0, 5.0, 50.0, 50.0),
             (10.0, 10.0, 20.0, 20.0),
@@ -202,19 +202,19 @@ mod tests {
         let mut results_new = Vec::new();
         let mut results_leg = Vec::new();
 
-        tree_new.query_containing(15.0, 15.0, 25.0, 25.0, &mut results_new);
-        tree_leg.query_containing(15.0, 15.0, 25.0, 25.0, &mut results_leg);
+        tree_new.query_contain(15.0, 15.0, 25.0, 25.0, &mut results_new);
+        tree_leg.query_contain(15.0, 15.0, 25.0, 25.0, &mut results_leg);
 
         results_new.sort();
         results_leg.sort();
         assert_eq!(
             results_new, results_leg,
-            "query_containing results differ"
+            "query_contain results differ"
         );
     }
 
     #[test]
-    fn test_query_contained_by_consistency() {
+    fn test_query_contained_within_consistency() {
         let boxes = vec![
             (10.0, 10.0, 20.0, 20.0),
             (30.0, 30.0, 40.0, 40.0),
@@ -226,14 +226,14 @@ mod tests {
         let mut results_new = Vec::new();
         let mut results_leg = Vec::new();
 
-        tree_new.query_contained_by(5.0, 5.0, 50.0, 50.0, &mut results_new);
-        tree_leg.query_contained_by(5.0, 5.0, 50.0, 50.0, &mut results_leg);
+        tree_new.query_contained_within(5.0, 5.0, 50.0, 50.0, &mut results_new);
+        tree_leg.query_contained_within(5.0, 5.0, 50.0, 50.0, &mut results_leg);
 
         results_new.sort();
         results_leg.sort();
         assert_eq!(
             results_new, results_leg,
-            "query_contained_by results differ"
+            "query_contained_within results differ"
         );
     }
 
@@ -275,30 +275,6 @@ mod tests {
         assert_eq!(
             results_new, results_leg,
             "query_intersecting_k results differ"
-        );
-    }
-
-    #[test]
-    fn test_query_within_distance_consistency() {
-        let boxes = vec![
-            (10.0, 10.0, 12.0, 12.0),
-            (30.0, 30.0, 32.0, 32.0),
-            (50.0, 50.0, 52.0, 52.0),
-        ];
-
-        let (tree_new, tree_leg) = setup_trees(&boxes);
-
-        let mut results_new = Vec::new();
-        let mut results_leg = Vec::new();
-
-        tree_new.query_within_distance(11.0, 11.0, 25.0, &mut results_new);
-        tree_leg.query_within_distance(11.0, 11.0, 25.0, &mut results_leg);
-
-        results_new.sort();
-        results_leg.sort();
-        assert_eq!(
-            results_new, results_leg,
-            "query_within_distance results differ"
         );
     }
 

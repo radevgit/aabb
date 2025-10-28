@@ -10,3 +10,4 @@
 #[doc(hidden)]
 pub use crate::HilbertRTreeLeg;
 pub use crate::HilbertRTree;
+pub use crate::AABB;

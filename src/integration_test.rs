@@ -27,14 +27,14 @@ mod integration_tests {
         tree.query_point(1.8, 1.8, &mut results);
         assert!(results.len() >= 1, "Point (1.8, 1.8) should be contained in at least one box");
         
-        // Test containing query using new parameter order
+        // Test contain query using new parameter order
         results.clear();
-        tree.query_containing(1.2, 1.2, 1.8, 1.8, &mut results);
+        tree.query_contain(1.2, 1.2, 1.8, 1.8, &mut results);
         // Should find boxes that completely contain the rectangle (1.2,1.2) to (1.8,1.8)
         
-        // Test contained by query using new parameter order  
+        // Test contained_within query using new parameter order  
         results.clear();
-        tree.query_contained_by(0.5, 0.5, 3.5, 3.5, &mut results);
+        tree.query_contained_within(0.5, 0.5, 3.5, 3.5, &mut results);
         // Should find boxes contained in the large rectangle (0.5,0.5) to (3.5,3.5)
         
         // All tests passed - API parameter order change is working!

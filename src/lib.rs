@@ -48,9 +48,9 @@
 //! tree.query_point(1.8, 1.8, &mut results);
 //! println!("Point (1.8, 1.8) is in boxes: {:?}", results);
 //!
-//! // Containment queries - find boxes that completely contain a rectangle
+//! // Containment queries - find boxes that contain a rectangle
 //! results.clear();
-//! tree.query_containing(1.2, 1.2, 1.8, 1.8, &mut results);
+//! tree.query_contain(1.2, 1.2, 1.8, 1.8, &mut results);
 //! println!("Boxes containing rectangle: {:?}", results);
 //!
 //! // K-limited queries - find first K intersecting boxes for performance
@@ -62,12 +62,7 @@
 //! let nearest = tree.query_nearest(2.0, 2.0);
 //! println!("Nearest box to (2.0, 2.0): {:?}", nearest);
 //!
-//! // Distance-based queries - find boxes within 1.5 units
-//! results.clear();
-//! tree.query_within_distance(1.0, 1.0, 1.5, &mut results);
-//! println!("Boxes within distance 1.5: {:?}", results);
-//!
-//! // Circular region queries
+//! // Distance-based queries - find boxes in circular region
 //! results.clear();
 //! tree.query_circle(1.5, 1.5, 2.0, &mut results);
 //! println!("Boxes in circle: {:?}", results);
@@ -96,13 +91,12 @@
 //! - [`query_intersecting`] - Find boxes that intersect a rectangle
 //! - [`query_intersecting_k`] - Find first K intersecting boxes
 //! - [`query_point`] - Find boxes that contain a point
-//! - [`query_containing`] - Find boxes that contain a rectangle  
-//! - [`query_contained_by`] - Find boxes contained within a rectangle
+//! - [`query_contain`] - Find boxes that contain a rectangle  
+//! - [`query_contained_within`] - Find boxes contained within a rectangle
 //!
 //! ### Distance-Based Queries
 //! - [`query_nearest`] - Find the single nearest box to a point
 //! - [`query_nearest_k`] - Find K nearest boxes to a point
-//! - [`query_within_distance`] - Find boxes within distance of a point
 //! - [`query_circle`] - Find boxes intersecting a circular region
 //!
 //! ### Directional Queries  
@@ -112,11 +106,10 @@
 //! [`query_intersecting`]: HilbertRTree::query_intersecting
 //! [`query_intersecting_k`]: HilbertRTree::query_intersecting_k
 //! [`query_point`]: HilbertRTree::query_point
-//! [`query_containing`]: HilbertRTree::query_containing
-//! [`query_contained_by`]: HilbertRTree::query_contained_by
+//! [`query_contain`]: HilbertRTree::query_contain
+//! [`query_contained_within`]: HilbertRTree::query_contained_within
 //! [`query_nearest`]: HilbertRTree::query_nearest
 //! [`query_nearest_k`]: HilbertRTree::query_nearest_k
-//! [`query_within_distance`]: HilbertRTree::query_within_distance
 //! [`query_circle`]: HilbertRTree::query_circle
 //! [`query_in_direction`]: HilbertRTree::query_in_direction
 //! [`query_in_direction_k`]: HilbertRTree::query_in_direction_k
@@ -157,6 +150,11 @@ pub mod prelude;
 #[doc(hidden)]
 pub use hilbert_rtree_leg::HilbertRTreeLeg;
 pub use hilbert_rtree::HilbertRTree;
+
+/// Convenient alias for HilbertRTree
+/// 
+/// Allows using `AABB::new()` or `AABB::with_capacity(n)` instead of `HilbertRTree::new()`
+pub type AABB = HilbertRTree;
 
 /// Add two unsigned 64-bit integers
 pub fn add(left: u64, right: u64) -> u64 {

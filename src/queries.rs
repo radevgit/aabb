@@ -306,10 +306,10 @@ impl HilbertRTreeLeg {
     /// tree.build();
     /// 
     /// let mut results = Vec::new();
-    /// tree.query_containing(1.5, 1.5, 3.5, 3.5, &mut results);
+    /// tree.query_contain(1.5, 1.5, 3.5, 3.5, &mut results);
     /// assert_eq!(results, vec![0]);
     /// ```
-    pub fn query_containing(
+    pub fn query_contain(
         &self,
         query_min_x: f64,
         query_min_y: f64,
@@ -349,10 +349,10 @@ impl HilbertRTreeLeg {
     /// tree.build();
     /// 
     /// let mut results = Vec::new();
-    /// tree.query_contained_by(0.5, 0.5, 3.5, 3.5, &mut results);
+    /// tree.query_contained_within(0.5, 0.5, 3.5, 3.5, &mut results);
     /// assert_eq!(results, vec![0]);
     /// ```
-    pub fn query_contained_by(
+    pub fn query_contained_within(
         &self,
         query_min_x: f64,
         query_min_y: f64,
@@ -682,7 +682,7 @@ mod tests {
         tree.build();
         
         let mut results = Vec::new();
-        tree.query_containing(1.5, 1.5, 3.5, 3.5, &mut results);
+        tree.query_contain(1.5, 1.5, 3.5, 3.5, &mut results);
         
         // Should find boxes 0 and 2 (both contain the query rectangle)
         assert_eq!(results.len(), 2);
@@ -700,7 +700,7 @@ mod tests {
         tree.build();
         
         let mut results = Vec::new();
-        tree.query_contained_by(0.5, 0.5, 3.5, 3.5, &mut results);
+        tree.query_contained_within(0.5, 0.5, 3.5, 3.5, &mut results);
         
         // Should find boxes 0 and 2 (both are contained by the query rectangle)
         assert_eq!(results.len(), 2);
@@ -1167,23 +1167,23 @@ mod tests {
         
         let mut results = Vec::new();
         
-        // Test query_containing - which boxes contain the query rectangle (3,3) to (3.5,3.5)
-        tree.query_containing(3.0, 3.0, 3.5, 3.5, &mut results);
+        // Test query_contain - which boxes contain the query rectangle (3,3) to (3.5,3.5)
+        tree.query_contain(3.0, 3.0, 3.5, 3.5, &mut results);
         // The large box (0,0) to (10,10) should contain this rectangle
         assert!(results.contains(&0), "Large box should contain the query rectangle");
         assert!(results.len() >= 1, "At least one box should contain the query rectangle");
         
         results.clear();
         
-        // Test query_contained_by - which boxes are contained by the query rectangle (1,1) to (9,9)
-        tree.query_contained_by(1.0, 1.0, 9.0, 9.0, &mut results);
+        // Test query_contained_within - which boxes are contained by the query rectangle (1,1) to (9,9)
+        tree.query_contained_within(1.0, 1.0, 9.0, 9.0, &mut results);
         assert_eq!(results.len(), 1);
         assert!(results.contains(&1), "Small box should be contained by the query rectangle");
         
         results.clear();
         
         // Test edge case - query rectangle exactly matches a box
-        tree.query_containing(2.0, 2.0, 4.0, 4.0, &mut results);
+        tree.query_contain(2.0, 2.0, 4.0, 4.0, &mut results);
         assert!(results.contains(&0), "Large container should contain exact match");
         assert!(results.contains(&1), "Box should contain itself (exact match)");
     }
