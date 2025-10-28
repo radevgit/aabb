@@ -37,6 +37,10 @@ harness = false
 name = "query_intersecting_bench_i32"
 harness = false
 
+[[bench]]
+name = "profile_bench"
+harness = false
+
 [lints.rust]
 keyword_idents_2024 = "forbid"
 non_ascii_idents = "forbid"
