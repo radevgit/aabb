@@ -1,6 +1,7 @@
 # Changelog
 
-## [Unreleased]
+## [0.5.0] - 2025-10-28
+- Implemented methods for i32 types
 
 ## [0.4.0] - 2025-10-28
 - Refactor query method names for semantic clarity.

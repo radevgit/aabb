@@ -139,7 +139,7 @@ impl HilbertRTree {
 
         // Write header
         self.data[0] = 0xfb; // magic
-        self.data[1] = 0x20; // version 2 + double type (8)
+        self.data[1] = 0x01; // version 1 + double type (8)
         self.data[2..4].copy_from_slice(&(node_size as u16).to_le_bytes());
         self.data[4..8].copy_from_slice(&(num_items as u32).to_le_bytes());
 
@@ -363,39 +363,203 @@ impl HilbertRTree {
         k: usize,
         results: &mut Vec<usize>,
     ) {
-        if self.num_items == 0 || self.level_bounds.is_empty() {
+        if self.num_items == 0 || self.level_bounds.is_empty() || k == 0 {
             results.clear();
             return;
         }
 
-        if k == 0 {
-            results.clear();
-            return;
+        use std::collections::BinaryHeap;
+        use std::cmp::Ordering;
+
+        // Priority queue entry: (distance, node_pos, is_leaf)
+        // Use reverse ordering so we get min-heap (closest items first)
+        #[derive(Debug, Clone, Copy)]
+        struct NodeEntry {
+            dist_sq: f64,
+            pos: usize,
+            is_leaf: bool,
         }
 
-        // Collect all leaf nodes with their distances
-        let mut candidates: Vec<(u64, usize)> = Vec::with_capacity(self.num_items);
+        impl Eq for NodeEntry {}
+        impl PartialEq for NodeEntry {
+            fn eq(&self, other: &Self) -> bool {
+                self.dist_sq == other.dist_sq && self.pos == other.pos
+            }
+        }
+        impl Ord for NodeEntry {
+            fn cmp(&self, other: &Self) -> Ordering {
+                // Reverse order for min-heap: larger distances sort first
+                other.dist_sq.partial_cmp(&self.dist_sq)
+                    .unwrap_or(Ordering::Equal)
+            }
+        }
+        impl PartialOrd for NodeEntry {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
 
-        // Process all leaf nodes (first level_bounds[0] positions)
-        let num_leaves = self.level_bounds[0];
-        for pos in 0..num_leaves {
+        // Result accumulator: use max-heap of (distance, index) to track K nearest
+        // When heap size > k, pop the farthest element
+        #[derive(Debug, Clone, Copy)]
+        struct ResultEntry {
+            dist_sq: f64,
+            idx: u32,
+        }
+
+        impl Eq for ResultEntry {}
+        impl PartialEq for ResultEntry {
+            fn eq(&self, other: &Self) -> bool {
+                self.dist_sq == other.dist_sq
+            }
+        }
+        impl Ord for ResultEntry {
+            fn cmp(&self, other: &Self) -> Ordering {
+                // Forward order for max-heap: smaller distances sort first
+                // This way we keep the K smallest distances
+                self.dist_sq.partial_cmp(&other.dist_sq)
+                    .unwrap_or(Ordering::Equal)
+            }
+        }
+        impl PartialOrd for ResultEntry {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        let mut queue = BinaryHeap::new();
+        let mut result_heap = BinaryHeap::new();
+        
+        // Start at root level (highest level has fewest nodes)
+        let root_level = self.level_bounds.len() - 1;
+        let root_start = if root_level > 0 {
+            self.level_bounds[root_level - 1]
+        } else {
+            0
+        };
+        let root_end = self.level_bounds[root_level];
+
+        // Initialize queue with root nodes
+        for pos in root_start..root_end {
             let node_box = self.get_box(pos);
             let dx = self.axis_distance(point_x, node_box.min_x, node_box.max_x);
             let dy = self.axis_distance(point_y, node_box.min_y, node_box.max_y);
             let dist_sq = dx * dx + dy * dy;
-            let dist_bits = dist_sq.to_bits();
-            let index = self.get_index(pos) as usize;
-            candidates.push((dist_bits, index));
+            queue.push(NodeEntry {
+                dist_sq,
+                pos,
+                is_leaf: false,
+            });
         }
 
-        // Sort by distance and keep only K
-        candidates.sort_by(|a, b| a.0.cmp(&b.0));
-        candidates.truncate(k);
+        let mut max_dist_sq = f64::INFINITY;
 
+        // Traverse tree in priority order
+        while let Some(entry) = queue.pop() {
+            // Skip if this node is farther than our kth result
+            if entry.dist_sq > max_dist_sq {
+                continue;
+            }
+
+            if entry.is_leaf {
+                // This is a leaf item - add to results
+                let index = self.get_index(entry.pos);
+                result_heap.push(ResultEntry {
+                    dist_sq: entry.dist_sq,
+                    idx: index,
+                });
+
+                // Keep only k results, removing farthest if we exceed k
+                if result_heap.len() > k {
+                    result_heap.pop();
+                }
+
+                // Update max distance threshold
+                if result_heap.len() == k {
+                    if let Some(&top) = result_heap.peek() {
+                        max_dist_sq = top.dist_sq;
+                    }
+                }
+            } else {
+                // Internal node - add its children to queue
+                // Children span from level_bounds[level] to level_bounds[level+1]
+                
+                // Find which level this node is at
+                let mut level = 0;
+                for i in 0..self.level_bounds.len() {
+                    if entry.pos < self.level_bounds[i] {
+                        level = i;
+                        break;
+                    }
+                }
+
+                if level > 0 {
+                    let child_level_start = self.level_bounds[level - 1];
+                    let child_level_end = if level == 0 {
+                        self.num_items
+                    } else {
+                        self.level_bounds[level - 1]
+                    };
+
+                    // Internal nodes point to their children via indices
+                    // Calculate which children belong to this parent node
+                    // Node at position in this level has node_size children at next level down
+                    let node_index = self.get_index(entry.pos);
+                    let first_child = (node_index >> 2) as usize;
+
+                    for child_idx in 0..self.node_size {
+                        let child_pos = first_child + child_idx;
+                        if child_pos >= child_level_end {
+                            break;
+                        }
+
+                        let child_box = self.get_box(child_pos);
+                        let dx = self.axis_distance(point_x, child_box.min_x, child_box.max_x);
+                        let dy = self.axis_distance(point_y, child_box.min_y, child_box.max_y);
+                        let dist_sq = dx * dx + dy * dy;
+
+                        // Only add if within threshold or we haven't found k results yet
+                        if dist_sq <= max_dist_sq || result_heap.len() < k {
+                            let is_child_leaf = child_level_start == self.num_items;
+                            queue.push(NodeEntry {
+                                dist_sq,
+                                pos: child_pos,
+                                is_leaf: is_child_leaf,
+                            });
+                        }
+                    }
+                } else {
+                    // Children are leaf items
+                    let first_child = (self.get_index(entry.pos) >> 2) as usize;
+                    for child_idx in 0..self.node_size {
+                        let child_pos = first_child + child_idx;
+                        if child_pos >= self.num_items {
+                            break;
+                        }
+
+                        let child_box = self.get_box(child_pos);
+                        let dx = self.axis_distance(point_x, child_box.min_x, child_box.max_x);
+                        let dy = self.axis_distance(point_y, child_box.min_y, child_box.max_y);
+                        let dist_sq = dx * dx + dy * dy;
+
+                        if dist_sq <= max_dist_sq || result_heap.len() < k {
+                            queue.push(NodeEntry {
+                                dist_sq,
+                                pos: child_pos,
+                                is_leaf: true,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Extract results from heap and sort
         results.clear();
-        for (_, idx) in candidates {
-            results.push(idx);
+        while let Some(entry) = result_heap.pop() {
+            results.push(entry.idx as usize);
         }
+        results.reverse(); // Reverse to get ascending order by distance
     }
 
     /// Finds all boxes that contain a specific point.

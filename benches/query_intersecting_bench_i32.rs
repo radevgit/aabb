@@ -1,10 +1,10 @@
-//! Benchmark for hierarchical query_intersecting performance
+//! Benchmark for hierarchical query_intersecting performance (i32 version)
 //!
 //! This benchmark measures the performance of the `query_intersecting` method
-//! on a HilbertRTree2 (hierarchical) with 1M randomly distributed bounding boxes.
+//! on a HilbertRTreeI32 with 1M randomly distributed bounding boxes.
 //! Queries are performed with varying size categories (10%, 1%, 0.01%).
 
-use aabb::HilbertRTree;
+use aabb::HilbertRTreeI32;
 use rand::Rng;
 use rand::SeedableRng;
 use std::time::Instant;
@@ -12,11 +12,11 @@ use std::time::Instant;
 /// Generate a random bounding box with the given size
 /// Coordinate space: 100x100 (matching C++ benchmark)
 /// Box size is variable UP TO the given max_size
-fn add_random_box<R: Rng>(rng: &mut R, boxes: &mut Vec<f64>, max_size: f64) {
-    let min_x = rng.random_range(0.0..(100.0 - max_size));
-    let min_y = rng.random_range(0.0..(100.0 - max_size));
-    let box_width = rng.random_range(0.0..max_size);
-    let box_height = rng.random_range(0.0..max_size);
+fn add_random_box<R: Rng>(rng: &mut R, boxes: &mut Vec<i32>, max_size: i32) {
+    let min_x = rng.random_range(0..(100 - max_size));
+    let min_y = rng.random_range(0..(100 - max_size));
+    let box_width = rng.random_range(0..max_size);
+    let box_height = rng.random_range(0..max_size);
     let max_x = min_x + box_width;
     let max_y = min_y + box_height;
     
@@ -28,8 +28,8 @@ fn add_random_box<R: Rng>(rng: &mut R, boxes: &mut Vec<f64>, max_size: f64) {
 
 /// Benchmark search operations with different query box sizes
 fn bench_search(
-    tree: &HilbertRTree,
-    boxes: &[f64],
+    tree: &HilbertRTreeI32,
+    boxes: &[i32],
     num_tests: usize,
     percentage_str: &str,
 ) {
@@ -53,35 +53,35 @@ fn bench_search(
 }
 
 /// Benchmark K-nearest neighbor queries
-fn bench_neighbors(
-    tree: &HilbertRTree,
-    coords: &[f64],
-    num_tests: usize,
-    k: usize,
-) {
-    let mut results = Vec::new();
-    let start = Instant::now();
+// fn bench_neighbors(
+//     tree: &HilbertRTreeI32,
+//     coords: &[i32],
+//     num_tests: usize,
+//     k: usize,
+// ) {
+//     let mut results = Vec::new();
+//     let start = Instant::now();
     
-    for i in 0..num_tests {
-        results.clear();
-        let x = coords[4 * i];
-        let y = coords[4 * i + 1];
-        tree.query_nearest_k(x, y, k, &mut results);
-    }
+//     for i in 0..num_tests {
+//         results.clear();
+//         let x = coords[4 * i];
+//         let y = coords[4 * i + 1];
+//         tree.query_intersecting(x, y, x + 1, y + 1, &mut results);
+//     }
     
-    let elapsed = start.elapsed();
-    println!(
-        "{} searches of {} neighbors: {}ms",
-        num_tests,
-        k,
-        elapsed.as_millis()
-    );
-}
+//     let elapsed = start.elapsed();
+//     println!(
+//         "{} searches of {} neighbors: {}ms",
+//         num_tests,
+//         k,
+//         elapsed.as_millis()
+//     );
+// }
 
 
 fn main() {
-    println!("AABB Hierarchical Hilbert R-tree Benchmark");
-    println!("=========================================\n");
+    println!("AABB Hierarchical Hilbert R-tree Benchmark (i32)");
+    println!("===============================================\n");
     
     let num_items = 1_000_000;
     let num_tests = 1_000;
@@ -93,7 +93,7 @@ fn main() {
     // Generate random boxes for indexing (coordinate space: 100x100)
     let mut coords = Vec::new();
     for _ in 0..num_items {
-        add_random_box(&mut rng, &mut coords, 1.0);
+        add_random_box(&mut rng, &mut coords, 1);
     }
     
     // Generate test query boxes with different sizes (matching C++ benchmark)
@@ -102,18 +102,18 @@ fn main() {
     let mut boxes_1 = Vec::new();    // 0.01% coverage: 1.0
     
     for _ in 0..num_tests {
-        // Size to cover 10% of space: sqrt(0.1) * 100 ≈ 31.62
-        add_random_box(&mut rng, &mut boxes_100, (0.1_f64).sqrt() * 100.0);
-        // Size to cover 1% of space: 10.0
-        add_random_box(&mut rng, &mut boxes_10, 10.0);
-        // Size to cover 0.01% of space: 1.0
-        add_random_box(&mut rng, &mut boxes_1, 1.0);
+        // Size to cover 10% of space: sqrt(0.1) * 100 ≈ 31
+        add_random_box(&mut rng, &mut boxes_100, 31);
+        // Size to cover 1% of space: 10
+        add_random_box(&mut rng, &mut boxes_10, 10);
+        // Size to cover 0.01% of space: 1
+        add_random_box(&mut rng, &mut boxes_1, 1);
     }
     
     // Build index
     println!("Building index with {} items...", num_items);
     let start = Instant::now();
-    let mut tree = HilbertRTree::with_capacity(num_items);
+    let mut tree = HilbertRTreeI32::with_capacity(num_items);
     
     for chunk in coords.chunks(4) {
         if chunk.len() == 4 {
@@ -135,34 +135,24 @@ fn main() {
     bench_search(&tree, &boxes_100, num_tests, "10");
     bench_search(&tree, &boxes_10, num_tests, "1");
     bench_search(&tree, &boxes_1, num_tests, "0.01");
-    println!();
 
-    // Benchmark nearest neighbor queries
-    println!("Running neighbor benchmarks:");
-    println!("-----------------------");
-    bench_neighbors(&tree, &coords, num_tests, 100);
-    bench_neighbors(&tree, &coords, 1, num_items);
-    bench_neighbors(&tree, &coords, num_items / 10, 1);
+        // Benchmark nearest neighbor queries
+    // println!("Running neighbor benchmarks:");
+    // println!("-----------------------");
+    // bench_neighbors(&tree, num_tests, 100);
     println!();
 }
 
-/* cargo bench  --bench query_intersecting_bench
+/* cargo bench  --bench query_intersecting_bench_32
 
 Building index with 1000000 items...
-Index built in 114.57ms
+Index built in 89.38ms
 
 Running query benchmarks:
 -----------------------
-1000 searches 10%: 224ms
-1000 searches 1%: 18ms
-1000 searches 0.01%: 
-
-Running neighbor benchmarks:
------------------------
-1000 searches of 100 neighbors: 21.24ms
-1 searches of 1000000 neighbors: 120.63ms
-100000 searches of 1 neighbors: 883.86ms
-________________________________________
+1000 searches 10%: 165ms
+1000 searches 1%: 9ms
+1000 searches 0.01%: 0ms
 
 
 */
