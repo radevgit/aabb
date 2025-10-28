@@ -17,7 +17,7 @@
 //! use aabb::prelude::*;
 //!
 //! // Create a new spatial index
-//! let mut tree = HilbertRTree::new();
+//! let mut tree = AABB::new();
 //!
 //! // Add some bounding boxes (min_x, min_y, max_x, max_y)
 //! tree.add(0.0, 0.0, 2.0, 2.0);    // Box 0: large box
