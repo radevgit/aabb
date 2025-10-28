@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.1] - 2025-10-28
+- Fix doctests
+
 ## [0.6.0] - 2025-10-28
 - Significant performance optimizations on nearest_k and intersect_k methods.
 - merge of some methods.

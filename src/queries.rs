@@ -201,9 +201,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 0.0, 2.0, 2.0);
     /// tree.add(1.0, 1.0, 3.0, 3.0);
     /// tree.build();
@@ -235,9 +235,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 2.0, 0.0, 2.0);
     /// tree.add(1.0, 3.0, 1.0, 3.0);
     /// tree.add(1.5, 2.5, 1.5, 2.5);
@@ -269,9 +269,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 0.0, 2.0, 2.0);  // Contains (1.0, 1.0)
     /// tree.add(3.0, 3.0, 4.0, 4.0);  // Does not contain (1.0, 1.0)
     /// tree.build();
@@ -297,9 +297,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 0.0, 4.0, 4.0);  // Large box - contains query
     /// tree.add(1.0, 1.0, 2.0, 2.0);  // Small box - does not contain query
     /// tree.build();
@@ -340,9 +340,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(1.0, 2.0, 1.0, 2.0);  // Small box - contained by query
     /// tree.add(0.0, 4.0, 0.0, 4.0);  // Large box - not contained by query
     /// tree.build();
@@ -382,9 +382,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 1.0, 0.0, 1.0);   // Center at (0.5, 0.5)
     /// tree.add(2.0, 3.0, 2.0, 3.0);   // Center at (2.5, 2.5)
     /// tree.add(4.0, 5.0, 4.0, 5.0);   // Center at (4.5, 4.5)
@@ -415,9 +415,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 1.0, 0.0, 1.0);   // Center at (0.5, 0.5)
     /// tree.add(2.0, 3.0, 2.0, 3.0);   // Center at (2.5, 2.5)
     /// tree.build();
@@ -442,9 +442,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 1.0, 0.0, 1.0);
     /// tree.add(3.0, 4.0, 3.0, 4.0);   // Far away
     /// tree.build();
@@ -472,9 +472,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(0.0, 1.0, 0.0, 1.0);   // Intersects circle
     /// tree.add(5.0, 6.0, 5.0, 6.0);   // Outside circle
     /// tree.build();
@@ -526,9 +526,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(2.0, 3.0, 0.0, 1.0);   // To the right, close
     /// tree.add(4.0, 5.0, 0.0, 1.0);   // To the right, far
     /// tree.add(0.0, 1.0, 2.0, 3.0);   // Above
@@ -585,9 +585,9 @@ impl HilbertRTreeLeg {
     ///
     /// # Examples
     /// ```
-    /// use aabb::HilbertRTree;
+    /// use aabb::HilbertRTreeLeg;
     /// 
-    /// let mut tree = HilbertRTree::new();
+    /// let mut tree = HilbertRTreeLeg::new();
     /// tree.add(2.0, 3.0, 0.0, 1.0);   // To the right
     /// tree.add(0.0, 1.0, 2.0, 3.0);   // Above
     /// tree.build();
