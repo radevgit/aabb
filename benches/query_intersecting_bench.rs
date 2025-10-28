@@ -53,29 +53,30 @@ fn bench_search(
 }
 
 /// Benchmark K-nearest neighbor queries
-// fn bench_neighbors(
-//     tree: &HilbertRTree,
-//     num_tests: usize,
-//     k: usize,
-// ) {
-//     let mut results = Vec::new();
-//     let start = Instant::now();
+fn bench_neighbors(
+    tree: &HilbertRTree,
+    coords: &[f64],
+    num_tests: usize,
+    k: usize,
+) {
+    let mut results = Vec::new();
+    let start = Instant::now();
     
-//     for i in 0..num_tests {
-//         results.clear();
-//         let x = (i as f64 * 0.5) % 100.0;
-//         let y = (i as f64 * 0.7) % 100.0;
-//         tree.query_nearest_k(x, y, k, &mut results);
-//     }
+    for i in 0..num_tests {
+        results.clear();
+        let x = coords[4 * i];
+        let y = coords[4 * i + 1];
+        tree.query_nearest_k(x, y, k, &mut results);
+    }
     
-//     let elapsed = start.elapsed();
-//     println!(
-//         "{} searches of {} neighbors: {}ms",
-//         num_tests,
-//         k,
-//         elapsed.as_millis()
-//     );
-// }
+    let elapsed = start.elapsed();
+    println!(
+        "{} searches of {} neighbors: {}ms",
+        num_tests,
+        k,
+        elapsed.as_millis()
+    );
+}
 
 
 fn main() {
@@ -134,22 +135,34 @@ fn main() {
     bench_search(&tree, &boxes_100, num_tests, "10");
     bench_search(&tree, &boxes_10, num_tests, "1");
     bench_search(&tree, &boxes_1, num_tests, "0.01");
+    println!();
 
-        // Benchmark nearest neighbor queries
-    // println!("Running neighbor benchmarks:");
-    // println!("-----------------------");
-    // bench_neighbors(&tree, num_tests, 100);
+    // Benchmark nearest neighbor queries
+    println!("Running neighbor benchmarks:");
+    println!("-----------------------");
+    bench_neighbors(&tree, &coords, num_tests, 100);
+    bench_neighbors(&tree, &coords, 1, num_items);
+    bench_neighbors(&tree, &coords, num_items / 10, 1);
     println!();
 }
 
 /* cargo bench  --bench query_intersecting_bench
 
-Index built in 120.92ms
+Building index with 1000000 items...
+Index built in 114.57ms
 
 Running query benchmarks:
 -----------------------
-1000 searches 10%: 249ms
-1000 searches 1%: 21ms
-1000 searches 0.01%: 2ms
+1000 searches 10%: 224ms
+1000 searches 1%: 18ms
+1000 searches 0.01%: 
+
+Running neighbor benchmarks:
+-----------------------
+1000 searches of 100 neighbors: 21.24ms
+1 searches of 1000000 neighbors: 120.63ms
+100000 searches of 1 neighbors: 883.86ms
+________________________________________
+
 
 */

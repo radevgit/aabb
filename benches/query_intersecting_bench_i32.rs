@@ -55,6 +55,7 @@ fn bench_search(
 /// Benchmark K-nearest neighbor queries
 // fn bench_neighbors(
 //     tree: &HilbertRTreeI32,
+//     coords: &[i32],
 //     num_tests: usize,
 //     k: usize,
 // ) {
@@ -63,9 +64,9 @@ fn bench_search(
     
 //     for i in 0..num_tests {
 //         results.clear();
-//         let x = ((i as i32 * 0) % 100) as i32;
-//         let y = ((i as i32 * 0) % 100) as i32;
-//         tree.query_intersecting(x, y, x + 10, y + 10, &mut results);
+//         let x = coords[4 * i];
+//         let y = coords[4 * i + 1];
+//         tree.query_intersecting(x, y, x + 1, y + 1, &mut results);
 //     }
     
 //     let elapsed = start.elapsed();
