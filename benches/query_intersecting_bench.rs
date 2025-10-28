@@ -155,7 +155,7 @@ Running query benchmarks:
 -----------------------
 1000 searches 10%: 224ms
 1000 searches 1%: 18ms
-1000 searches 0.01%: 
+1000 searches 0.01%: 3ms
 
 Running neighbor benchmarks:
 -----------------------
@@ -164,5 +164,21 @@ Running neighbor benchmarks:
 100000 searches of 1 neighbors: 883.86ms
 ________________________________________
 
+After some optimizations:
+Building index with 1000000 items...
+Index built in 109.79ms
+
+Running query benchmarks:
+-----------------------
+1000 searches 10%: 235ms
+1000 searches 1%: 21ms
+1000 searches 0.01%: 3ms
+
+Running neighbor benchmarks:
+-----------------------
+1000 searches of 100 neighbors: 15ms
+1 searches of 1000000 neighbors: 112ms
+100000 searches of 1 neighbors: 567ms
+_________________________________________
 
 */

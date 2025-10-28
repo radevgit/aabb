@@ -381,12 +381,33 @@ impl HilbertRTreeI32 {
         max_y: i32,
         results: &mut Vec<usize>,
     ) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
-
-        results.clear();
         
+        // Query area heuristic for early termination decision
+        let query_area = (max_x as i64 - min_x as i64) * (max_y as i64 - min_y as i64);
+        let bounds_area = (self.bounds.max_x as i64 - self.bounds.min_x as i64)
+            * (self.bounds.max_y as i64 - self.bounds.min_y as i64);
+
+        // If query covers >50% of space, full scan is faster than hierarchical traversal
+        if query_area > bounds_area / 2 {
+            // Fast path: scan all leaf nodes directly
+            for pos in 0..self.num_items {
+                let node_box = self.get_box(pos);
+
+                if max_x >= node_box.min_x && max_y >= node_box.min_y
+                    && min_x <= node_box.max_x && min_y <= node_box.max_y
+                {
+                    let index = self.get_index(pos);
+                    results.push(index as usize);
+                }
+            }
+            return;
+        }
+
+        // Slow path: hierarchical traversal with pruning
         let mut queue = Vec::new();
         let mut node_index = self.total_nodes - 1;
         
@@ -404,7 +425,7 @@ impl HilbertRTreeI32 {
                 }
                 
                 let index = self.get_index(pos);
-                if node_index >= self.num_items {
+                if pos >= self.num_items {
                     queue.push((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
@@ -552,7 +573,7 @@ impl HilbertRTreeI32 {
                 }
                 
                 let index = self.get_index(pos);
-                if node_index >= self.num_items {
+                if pos >= self.num_items {
                     queue.push((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
@@ -617,7 +638,7 @@ impl HilbertRTreeI32 {
                    node_box.min_y <= min_y && node_box.max_y >= max_y {
                     
                     let index = self.get_index(pos);
-                    if node_index >= self.num_items {
+                    if pos >= self.num_items {
                         queue.push((index >> 2) as usize);
                     } else {
                         results.push(index as usize);
@@ -678,7 +699,7 @@ impl HilbertRTreeI32 {
             for pos in node_index..end_pos {
                 let node_box = self.get_box(pos);
                 
-                if node_index >= self.num_items {
+                if pos >= self.num_items {
                     // This is a parent node - check if it could have matching children
                     // (any overlap with query region)
                     if node_box.max_x >= min_x && node_box.max_y >= min_y &&
