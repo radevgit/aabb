@@ -47,6 +47,8 @@ pub struct HilbertRTree {
     pub(crate) position: usize,
     /// Bounding box of all items
     pub(crate) bounds: Box,
+    /// Total nodes in tree (cached from level_bounds.last())
+    total_nodes: usize,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
@@ -75,6 +77,7 @@ impl HilbertRTree {
             num_items: 0,
             position: 0,
             bounds: Box::new(f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
+            total_nodes: 0,
         }
     }
 
@@ -144,6 +147,7 @@ impl HilbertRTree {
 
         self.level_bounds = level_bounds;
         self.position = 0;
+        self.total_nodes = total_nodes;
 
         // If all items fit in one node, create a root level
         if num_items <= node_size {
@@ -249,7 +253,6 @@ impl HilbertRTree {
         self.num_items == 0
     }
 
-    /// Internal: Generic tree traversal for queries
 
     /// Finds all boxes that intersect with a given rectangular region.
     ///
@@ -285,45 +288,69 @@ impl HilbertRTree {
         max_y: f64,
         results: &mut Vec<usize>,
     ) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
 
-        results.clear();
         
-        let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
-        
-        loop {
-            // Find the end index of the node (upper bound)
-            let node_end = self.upper_bound(node_index);
-            let end_pos = (node_index + self.node_size).min(node_end);
-            
-            // Search through child nodes
-            for pos in node_index..end_pos {
+
+        // Query area heuristic for early termination decision
+        let query_area = (max_x - min_x) * (max_y - min_y);
+        let bounds_area = (self.bounds.max_x - self.bounds.min_x)
+            * (self.bounds.max_y - self.bounds.min_y);
+
+        // If query covers >50% of space, full scan is faster than hierarchical traversal
+        if query_area > bounds_area * 0.5 {
+            // Fast path: scan all leaf nodes directly
+            for pos in 0..self.num_items {
                 let node_box = self.get_box(pos);
-                
-                // Check if node bbox intersects with query bbox
-                if max_x < node_box.min_x || max_y < node_box.min_y ||
-                   min_x > node_box.max_x || min_y > node_box.max_y {
-                    continue;
-                }
-                
-                let index = self.get_index(pos);
-                if node_index >= self.num_items {
-                    // This is a parent node; add to queue
-                    queue.push((index >> 2) as usize);
-                } else {
-                    // This is a leaf item
+
+                if max_x >= node_box.min_x && max_y >= node_box.min_y
+                    && min_x <= node_box.max_x && min_y <= node_box.max_y
+                {
+                    let index = self.get_index(pos);
                     results.push(index as usize);
                 }
             }
-            
+            return;
+        }
+
+        // Slow path: hierarchical traversal with pruning
+        let mut queue = Vec::new();
+        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
+        let mut node_index = total_nodes - 1;
+
+        loop {
+            // Find bounds of current level
+            let node_end = self.upper_bound(node_index);
+            let end_pos = (node_index + self.node_size).min(node_end);
+
+            // Check all children of current node
+            for pos in node_index..end_pos {
+                let node_box = self.get_box(pos);
+
+                // Prune: skip if no intersection (early termination per node)
+                if max_x < node_box.min_x || max_y < node_box.min_y
+                    || min_x > node_box.max_x || min_y > node_box.max_y
+                {
+                    continue;
+                }
+
+                let index = self.get_index(pos);
+                if pos < self.num_items {
+                    // Leaf item
+                    results.push(index as usize);
+                } else {
+                    // Parent node - add to queue for traversal
+                    queue.push((index >> 2) as usize);
+                }
+            }
+
             if queue.is_empty() {
                 break;
             }
-            
+
             node_index = queue.remove(0);
         }
     }
@@ -1207,8 +1234,7 @@ impl HilbertRTree {
     /// Get index at position (using slice `from_raw_parts` - Option 4)
     #[inline]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
+        let indices_start = HEADER_SIZE + self.total_nodes * size_of::<Box>();
         let idx_slice = unsafe {
             std::slice::from_raw_parts(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32, 1)
         };
@@ -1230,12 +1256,13 @@ impl HilbertRTree {
     /// Find upper bound of a node in `level_bounds`
     #[inline]
     fn upper_bound(&self, node_index: usize) -> usize {
-        for &bound in &self.level_bounds {
-            if bound > node_index {
-                return bound;
-            }
+        // Binary search: find first level_bound > node_index
+        let idx = self.level_bounds.partition_point(|&bound| bound <= node_index);
+        if idx < self.level_bounds.len() {
+            self.level_bounds[idx]
+        } else {
+            self.level_bounds.last().copied().unwrap_or(0)
         }
-        self.level_bounds.last().copied().unwrap_or(0)
     }
 
     /// Quicksort by Hilbert value, also reordering boxes and indices

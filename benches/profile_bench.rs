@@ -143,3 +143,30 @@ fn main() {
     println!("Build dominates: {:.1}%", (build_total.as_secs_f64() / (build_total.as_secs_f64() + small_query_time.as_secs_f64() + large_query_time.as_secs_f64())) * 100.0);
     println!("Queries (total): {:.2}ms", (small_query_time.as_secs_f64() + large_query_time.as_secs_f64()) * 1000.0);
 }
+
+
+/*
+Generating 1000000 random boxes...
+  Generated in 22.23ms
+
+Building index...
+  Add items:        15.19ms
+  Build tree:       104.50ms
+  Total build:      119.71ms
+
+Profiling query_intersecting:
+----------------------------------------
+  1000 small queries (1%):    4.48ms (4.478µs/query)
+  1000 large queries (10%):   1893.00ms (1893.003µs/query)
+
+Profiling query_nearest_k:
+----------------------------------------
+  1000 queries k=1:          9.70ms (9.695µs/query, avg 1.0 results)
+  1000 queries k=10:          10.53ms (10.532µs/query, avg 10.0 results)
+  1000 queries k=100:          20.98ms (20.980µs/query, avg 100.0 results)
+  100 queries k=1000:          11.74ms (117.446µs/query, avg 1000.0 results)
+
+==================================================
+
+
+*/
