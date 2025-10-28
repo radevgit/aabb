@@ -22,11 +22,10 @@ impl HilbertRTreeLeg {
     ) {
         let mut count = 0;
         for &idx in &self.sorted_order {
-            if let Some(limit_val) = limit {
-                if count >= limit_val {
+            if let Some(limit_val) = limit
+                && count >= limit_val {
                     break;
                 }
-            }
             
             let (min_x, min_y, max_x, max_y) = self.boxes[idx];
             
@@ -723,7 +722,7 @@ mod tests {
         
         // Should find at most 2 results due to k limit
         assert!(results.len() <= 2);
-        assert!(results.len() > 0); // Should find at least some
+        assert!(!results.is_empty()); // Should find at least some
     }
 
     #[test]
@@ -987,7 +986,7 @@ mod tests {
         // Test k larger than available results
         results.clear();
         tree.query_intersecting_k(0.5, 0.5, 1.0, 1.0, 10, &mut results);
-        assert!(results.len() <= 10 && results.len() > 0, "Should return all available results up to k");
+        assert!(results.len() <= 10 && !results.is_empty(), "Should return all available results up to k");
     }
 
     #[test]
@@ -1171,7 +1170,7 @@ mod tests {
         tree.query_contain(3.0, 3.0, 3.5, 3.5, &mut results);
         // The large box (0,0) to (10,10) should contain this rectangle
         assert!(results.contains(&0), "Large box should contain the query rectangle");
-        assert!(results.len() >= 1, "At least one box should contain the query rectangle");
+        assert!(!results.is_empty(), "At least one box should contain the query rectangle");
         
         results.clear();
         
@@ -1197,7 +1196,7 @@ mod tests {
         
         // Test query_within_distance_internal with sorting
         let candidates = tree.query_within_distance_internal(1.5, 1.5, 2.0, true);
-        assert!(candidates.len() > 0, "Should find candidates within distance");
+        assert!(!candidates.is_empty(), "Should find candidates within distance");
         
         // Verify sorting (first element should have smaller or equal distance than second)
         if candidates.len() > 1 {
@@ -1282,6 +1281,6 @@ mod tests {
         
         // Test circle query at boundary
         tree.query_circle(1.0, 1.0, 0.1, &mut results);
-        assert!(results.len() >= 1, "Circle at boundary should intersect at least one box");
+        assert!(!results.is_empty(), "Circle at boundary should intersect at least one box");
     }
 }

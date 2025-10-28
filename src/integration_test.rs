@@ -25,7 +25,7 @@ mod integration_tests {
         // Test point query
         results.clear();
         tree.query_point(1.8, 1.8, &mut results);
-        assert!(results.len() >= 1, "Point (1.8, 1.8) should be contained in at least one box");
+        assert!(!results.is_empty(), "Point (1.8, 1.8) should be contained in at least one box");
         
         // Test contain query using new parameter order
         results.clear();

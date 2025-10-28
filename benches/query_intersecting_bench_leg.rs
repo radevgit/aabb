@@ -1,7 +1,7 @@
-//! Benchmark for query_intersecting performance
+//! Benchmark for `query_intersecting` performance
 //!
 //! This benchmark measures the performance of the `query_intersecting` method
-//! on a HilbertRTree with 1M randomly distributed bounding boxes.
+//! on a `HilbertRTree` with 1M randomly distributed bounding boxes.
 //! Queries are performed with varying size categories (10%, 1%, 0.01%).
 
 use aabb::HilbertRTreeLeg;
@@ -11,7 +11,7 @@ use std::time::Instant;
 
 /// Generate a random bounding box with the given size
 /// Coordinate space: 100x100 (matching C++ benchmark)
-/// Box size is variable UP TO the given max_size
+/// Box size is variable UP TO the given `max_size`
 fn add_random_box<R: Rng>(rng: &mut R, boxes: &mut Vec<f64>, max_size: f64) {
     let min_x = rng.random_range(0.0..(100.0 - max_size));
     let min_y = rng.random_range(0.0..(100.0 - max_size));
@@ -61,7 +61,7 @@ fn main() {
     let num_tests = 1_000;
     
     // Create MT19937 RNG with fixed seed for reproducibility
-    let seed = 95756739u64;
+    let seed = 95756739_u64;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     
     // Generate random boxes for indexing (coordinate space: 100x100)

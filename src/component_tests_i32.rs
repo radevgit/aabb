@@ -500,8 +500,8 @@ mod tests {
     fn test_large_dataset_1000_items() {
         let mut tree = HilbertRTreeI32::with_capacity(1000);
         for i in 0..1000 {
-            let x = ((i % 50) * 4) as i32;
-            let y = ((i / 50) * 4) as i32;
+            let x = (i % 50) * 4;
+            let y = (i / 50) * 4;
             tree.add(x, y, x + 2, y + 2);
         }
         tree.build();
@@ -516,7 +516,7 @@ mod tests {
     fn test_large_dataset_performance() {
         let mut tree = HilbertRTreeI32::with_capacity(5000);
         for i in 0..5000 {
-            let x = (i * 2) as i32;
+            let x = i * 2;
             tree.add(x, x, x + 5, x + 5);
         }
         tree.build();
@@ -538,9 +538,9 @@ mod tests {
 
         for x in 0..grid_size {
             for y in 0..grid_size {
-                let min_x = (x * cell_size) as i32;
-                let min_y = (y * cell_size) as i32;
-                tree.add(min_x, min_y, min_x + cell_size as i32 - 1, min_y + cell_size as i32 - 1);
+                let min_x = x * cell_size;
+                let min_y = y * cell_size;
+                tree.add(min_x, min_y, min_x + cell_size - 1, min_y + cell_size - 1);
             }
         }
         tree.build();

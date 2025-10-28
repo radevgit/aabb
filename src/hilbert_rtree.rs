@@ -20,18 +20,18 @@ pub(crate) struct Box {
 
 impl Box {
     fn new(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
-        Box { min_x, min_y, max_x, max_y }
+        Self { min_x, min_y, max_x, max_y }
     }
 }
 
 /// Hilbert R-tree for spatial queries - following flatbush algorithm
 ///
 /// Memory layout (in single buffer):
-/// - Header: 8 bytes (magic, version, node_size, num_items)
-/// - All boxes: num_total_nodes * 32 bytes (4 f64 per box)
-/// - All indices: num_total_nodes * 4 bytes (u32 per node)
+/// - Header: 8 bytes (magic, version, `node_size`, `num_items`)
+/// - All boxes: `num_total_nodes` * 32 bytes (4 f64 per box)
+/// - All indices: `num_total_nodes` * 4 bytes (u32 per node)
 ///
-/// Leaf nodes occupy positions [0, num_items), parent nodes appended after.
+/// Leaf nodes occupy positions [0, `num_items`), parent nodes appended after.
 /// Tree is built bottom-up with Hilbert curve ordering for spatial locality.
 #[derive(Clone, Debug)]
 pub struct HilbertRTree {
@@ -56,20 +56,19 @@ const HEADER_SIZE: usize = 8; // bytes
 impl HilbertRTree {
     /// Creates a new empty Hilbert R-tree
     pub fn new() -> Self {
-        HilbertRTree::with_capacity(0)
+        Self::with_capacity(0)
     }
 
     /// Creates a new Hilbert R-tree with preallocated capacity
     pub fn with_capacity(capacity: usize) -> Self {
         let data = if capacity > 0 {
-            let mut v = Vec::new();
-            v.resize(HEADER_SIZE + capacity * size_of::<Box>(), 0);
+            let v = vec![0; HEADER_SIZE + capacity * size_of::<Box>()];
             v
         } else {
             Vec::new()
         };
         
-        HilbertRTree {
+        Self {
             data,
             level_bounds: Vec::new(),
             node_size: DEFAULT_NODE_SIZE,
@@ -125,7 +124,7 @@ impl HilbertRTree {
 
         // Create parent levels until we have a single root
         loop {
-            count = (count + node_size - 1) / node_size;
+            count = count.div_ceil(node_size);
             total_nodes += count;
             level_bounds.push(total_nodes);
             if count <= 1 {
@@ -167,7 +166,7 @@ impl HilbertRTree {
             // Write the root node index (pointer to first child at position 0)
             let root_idx_ptr = &mut self.data[indices_start + num_items * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
-                std::ptr::write_unaligned(root_idx_ptr, 0u32 << 2u32); // First child at position 0
+                std::ptr::write_unaligned(root_idx_ptr, 0_u32 << 2_u32); // First child at position 0
             }
             return;
         }
@@ -176,7 +175,7 @@ impl HilbertRTree {
         let hilbert_width = MAX_HILBERT as f64 / (self.bounds.max_x - self.bounds.min_x);
         let hilbert_height = MAX_HILBERT as f64 / (self.bounds.max_y - self.bounds.min_y);
 
-        let mut hilbert_values = vec![0u32; num_items];
+        let mut hilbert_values = vec![0_u32; num_items];
         for i in 0..num_items {
             let box_data = self.get_box(i);
             let center_x = ((box_data.min_x + box_data.max_x) / 2.0 - self.bounds.min_x) * hilbert_width;
@@ -199,13 +198,13 @@ impl HilbertRTree {
         self.quicksort(&mut hilbert_values, 0, num_items - 1);
 
         // Build parent levels
-        let mut pos = 0usize;
+        let mut pos = 0_usize;
         for level_idx in 0..self.level_bounds.len() - 1 {
             let level_end = self.level_bounds[level_idx];
             let mut parent_pos = level_end;
 
             while pos < level_end {
-                let node_index = (pos as u32) << 2u32; // for JS compatibility
+                let node_index = (pos as u32) << 2_u32; // for JS compatibility
                 let mut node_box = self.get_box(pos);
 
                 // Merge up to node_size children
@@ -475,10 +474,10 @@ impl HilbertRTree {
                 }
 
                 // Update max distance threshold
-                if result_heap.len() == k {
-                    if let Some(&top) = result_heap.peek() {
-                        max_dist_sq = top.dist_sq;
-                    }
+                if result_heap.len() == k
+                    && let Some(&top) = result_heap.peek()
+                {
+                    max_dist_sq = top.dist_sq;
                 }
             } else {
                 // Internal node - add its children to queue
@@ -1195,7 +1194,7 @@ impl HilbertRTree {
 
     // --- Private helpers ---
 
-    /// Get box at position (using slice from_raw_parts - Option 4)
+    /// Get box at position (using slice `from_raw_parts` - Option 4)
     #[inline]
     pub(crate) fn get_box(&self, pos: usize) -> Box {
         let idx = HEADER_SIZE + pos * size_of::<Box>();
@@ -1205,7 +1204,7 @@ impl HilbertRTree {
         box_slice[0]
     }
 
-    /// Get index at position (using slice from_raw_parts - Option 4)
+    /// Get index at position (using slice `from_raw_parts` - Option 4)
     #[inline]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
@@ -1228,7 +1227,7 @@ impl HilbertRTree {
         }
     }
 
-    /// Find upper bound of a node in level_bounds
+    /// Find upper bound of a node in `level_bounds`
     #[inline]
     fn upper_bound(&self, node_index: usize) -> usize {
         for &bound in &self.level_bounds {
@@ -1339,7 +1338,7 @@ impl Default for HilbertRTree {
 }
 
 /// Hilbert curve index computation
-/// From https://github.com/rawrunprotected/hilbert_curves (public domain)
+/// From <https://github.com/rawrunprotected/hilbert_curves> (public domain)
 fn interleave(mut x: u32) -> u32 {
     x = (x | (x << 8)) & 0x00FF00FF;
     x = (x | (x << 4)) & 0x0F0F0F0F;
@@ -1348,7 +1347,7 @@ fn interleave(mut x: u32) -> u32 {
     x
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 fn hilbert_xy_to_index(x: u32, y: u32) -> u32 {
     // Initial prefix scan round, prime with x and y
     let mut a = x ^ y;

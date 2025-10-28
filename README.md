@@ -109,7 +109,7 @@ cargo run --example query_point
 ```
 Environment:
 - OS: Ubuntu 24.04.3 LTS
-- Processor: Intel Core i5-1240P (12 cores)
+- Processor: Intel Core i5-1240P
 - Kernel: Linux 6.8.0-86-generic 
 - CPU Frequency: ~1773-3500 MHz
 

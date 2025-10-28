@@ -21,7 +21,7 @@
 #[doc(hidden)]
 #[derive(Clone, Debug)]
 pub struct HilbertRTreeLeg {
-    /// Flat storage: (min_x, min_y, max_x, max_y) for each box
+    /// Flat storage: (`min_x`, `min_y`, `max_x`, `max_y`) for each box
     pub(crate) boxes: Vec<(f64, f64, f64, f64)>,
     /// Hilbert indices for sorting
     pub(crate) hilbert_indices: Vec<u64>,
@@ -34,7 +34,7 @@ pub struct HilbertRTreeLeg {
 impl HilbertRTreeLeg {
     /// Creates a new empty Hilbert R-tree
     pub fn new() -> Self {
-        HilbertRTreeLeg::with_capacity(0)
+        Self::with_capacity(0)
     }
 
     /// Creates a new Hilbert R-tree with preallocated capacity
@@ -42,7 +42,7 @@ impl HilbertRTreeLeg {
     /// # Arguments
     /// * `capacity` - Expected number of bounding boxes to be added
     pub fn with_capacity(capacity: usize) -> Self {
-        HilbertRTreeLeg {
+        Self {
             boxes: Vec::with_capacity(capacity),
             hilbert_indices: Vec::with_capacity(capacity),
             sorted_order: Vec::with_capacity(capacity),
@@ -105,8 +105,8 @@ fn hilbert_index(x: f64, y: f64, max_level: u32) -> u64 {
     let safe_x = if x.is_finite() { x } else { 0.0 };
     let safe_y = if y.is_finite() { y } else { 0.0 };
     
-    let xi = (safe_x.clamp(0.0, 1.0) * ((1u64 << max_level) as f64)) as u64;
-    let yi = (safe_y.clamp(0.0, 1.0) * ((1u64 << max_level) as f64)) as u64;
+    let xi = (safe_x.clamp(0.0, 1.0) * ((1_u64 << max_level) as f64)) as u64;
+    let yi = (safe_y.clamp(0.0, 1.0) * ((1_u64 << max_level) as f64)) as u64;
     xy_to_hilbert(xi, yi, max_level)
 }
 
@@ -116,8 +116,8 @@ fn xy_to_hilbert(x: u64, y: u64, order: u32) -> u64 {
         return 0;
     }
 
-    let mut d = 0u64;
-    let mut s = 1u64 << (order.saturating_sub(1).min(63));
+    let mut d = 0_u64;
+    let mut s = 1_u64 << (order.saturating_sub(1).min(63));
 
     let mut x = x;
     let mut y = y;
