@@ -56,6 +56,8 @@ pub struct HilbertRTreeI32 {
     pub(crate) position: usize,
     /// Bounding box of all items
     pub(crate) bounds: BoxI32,
+    /// Total nodes in tree (cached from level_bounds.last())
+    total_nodes: usize,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
@@ -104,6 +106,7 @@ impl HilbertRTreeI32 {
             num_items: 0,
             position: 0,
             bounds: BoxI32::new(i32::MAX, i32::MAX, i32::MIN, i32::MIN),
+            total_nodes: 0,
         }
     }
 
@@ -212,6 +215,7 @@ impl HilbertRTreeI32 {
 
         self.level_bounds = level_bounds;
         self.position = 0;
+        self.total_nodes = total_nodes;
 
         // If all items fit in one node, create a root level
         if num_items <= node_size {
@@ -384,8 +388,7 @@ impl HilbertRTreeI32 {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -462,8 +465,7 @@ impl HilbertRTreeI32 {
         results.clear();
         
         let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             if results.len() >= k {
@@ -534,8 +536,7 @@ impl HilbertRTreeI32 {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -602,8 +603,7 @@ impl HilbertRTreeI32 {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -669,8 +669,7 @@ impl HilbertRTreeI32 {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -718,10 +717,9 @@ impl HilbertRTreeI32 {
     }
 
     /// Get index at position
-    #[inline]
+    #[inline(always)]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let indices_start = HEADER_SIZE + total_nodes * size_of::<BoxI32>();
+        let indices_start = HEADER_SIZE + self.total_nodes * size_of::<BoxI32>();
         let idx_slice = unsafe {
             std::slice::from_raw_parts(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32, 1)
         };
@@ -729,14 +727,14 @@ impl HilbertRTreeI32 {
     }
 
     /// Find upper bound of a node in `level_bounds`
-    #[inline]
+    #[inline(always)]
     fn upper_bound(&self, node_index: usize) -> usize {
         for &bound in &self.level_bounds {
             if bound > node_index {
                 return bound;
             }
         }
-        self.level_bounds.last().copied().unwrap_or(0)
+        self.total_nodes
     }
 
     /// Quicksort by Hilbert value, also reordering boxes and indices
@@ -817,8 +815,7 @@ impl HilbertRTreeI32 {
         }
 
         // Swap indices
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let indices_start = HEADER_SIZE + total_nodes * size_of::<BoxI32>();
+        let indices_start = HEADER_SIZE + self.total_nodes * size_of::<BoxI32>();
         
         let left_idx_ptr = &mut self.data[indices_start + left * size_of::<u32>()] as *mut u8 as *mut u32;
         let right_idx_ptr = &mut self.data[indices_start + right * size_of::<u32>()] as *mut u8 as *mut u32;

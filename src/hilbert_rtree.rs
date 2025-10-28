@@ -317,8 +317,7 @@ impl HilbertRTree {
 
         // Slow path: hierarchical traversal with pruning
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
 
         loop {
             // Find bounds of current level
@@ -632,8 +631,7 @@ impl HilbertRTree {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -700,8 +698,7 @@ impl HilbertRTree {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -767,8 +764,7 @@ impl HilbertRTree {
         results.clear();
         
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -850,8 +846,7 @@ impl HilbertRTree {
         results.clear();
         
         let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             if results.len() >= k {
@@ -926,8 +921,7 @@ impl HilbertRTree {
         
         let radius_sq = radius * radius;
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -1027,8 +1021,7 @@ impl HilbertRTree {
         let sweep_max_y = max_y.max(max_y + dy);
 
         let mut queue = Vec::new();
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let mut node_index = total_nodes - 1;
+        let mut node_index = self.total_nodes - 1;
         
         loop {
             let node_end = self.upper_bound(node_index);
@@ -1133,8 +1126,7 @@ impl HilbertRTree {
         let mut candidates: Vec<(f64, usize)> = Vec::new();
 
         let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        queue.push(total_nodes - 1);
+        queue.push(self.total_nodes - 1);
 
         while let Some(node_idx) = queue.pop() {
             let node_end = self.upper_bound(node_idx);
@@ -1192,7 +1184,7 @@ impl HilbertRTree {
     // --- Private helpers ---
 
     /// Get box at position (using slice `from_raw_parts` - Option 4)
-    #[inline]
+    #[inline(always)]
     pub(crate) fn get_box(&self, pos: usize) -> Box {
         let idx = HEADER_SIZE + pos * size_of::<Box>();
         let box_slice = unsafe {
@@ -1202,7 +1194,7 @@ impl HilbertRTree {
     }
 
     /// Get index at position (using slice `from_raw_parts` - Option 4)
-    #[inline]
+    #[inline(always)]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let indices_start = HEADER_SIZE + self.total_nodes * size_of::<Box>();
         let idx_slice = unsafe {
@@ -1212,7 +1204,7 @@ impl HilbertRTree {
     }
 
     /// Get distance along an axis
-    #[inline]
+    #[inline(always)]
     fn axis_distance(&self, coordinate: f64, min: f64, max: f64) -> f64 {
         if coordinate < min {
             min - coordinate
@@ -1224,14 +1216,14 @@ impl HilbertRTree {
     }
 
     /// Find upper bound of a node in `level_bounds`
-    #[inline]
+    #[inline(always)]
     fn upper_bound(&self, node_index: usize) -> usize {
         // Binary search: find first level_bound > node_index
         let idx = self.level_bounds.partition_point(|&bound| bound <= node_index);
         if idx < self.level_bounds.len() {
             self.level_bounds[idx]
         } else {
-            self.level_bounds.last().copied().unwrap_or(0)
+            self.total_nodes
         }
     }
 
@@ -1275,6 +1267,7 @@ impl HilbertRTree {
     }
 
     /// Median of three for quicksort pivot selection
+    #[inline]
     fn median_of_three(&self, values: &[u32], left: usize, right: usize) -> u32 {
         let mid = (left + right) / 2;
         let a = values[left];
@@ -1313,8 +1306,7 @@ impl HilbertRTree {
         }
 
         // Swap indices
-        let total_nodes = self.level_bounds.last().copied().unwrap_or(0);
-        let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
+        let indices_start = HEADER_SIZE + self.total_nodes * size_of::<Box>();
         
         let left_idx_ptr = &mut self.data[indices_start + left * size_of::<u32>()] as *mut u8 as *mut u32;
         let right_idx_ptr = &mut self.data[indices_start + right * size_of::<u32>()] as *mut u8 as *mut u32;
@@ -1336,6 +1328,7 @@ impl Default for HilbertRTree {
 
 /// Hilbert curve index computation
 /// From <https://github.com/rawrunprotected/hilbert_curves> (public domain)
+#[inline(always)]
 fn interleave(mut x: u32) -> u32 {
     x = (x | (x << 8)) & 0x00FF00FF;
     x = (x | (x << 4)) & 0x0F0F0F0F;
@@ -1345,6 +1338,7 @@ fn interleave(mut x: u32) -> u32 {
 }
 
 #[expect(non_snake_case)]
+#[inline]
 fn hilbert_xy_to_index(x: u32, y: u32) -> u32 {
     // Initial prefix scan round, prime with x and y
     let mut a = x ^ y;
