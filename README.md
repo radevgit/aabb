@@ -8,7 +8,7 @@ A Rust library providing a simple and efficient Hilbert R-tree implementation fo
 
 ## Features
 
-- **Hilbert Curve Ordering**: Uses Hilbert space-filling curve for improved spatial locality
+- **Hilbert Curve Ordering**: Uses Hilbert space-filling curve for improved spatial locality (following Flatbush algorithm)
 - **AABB Intersection Queries**: Fast rectangular bounding box intersection testing
 - **Zero-Copy**: Single contiguous buffer layout - safe for parallel queries with no allocations per query
 - **Simple API**: Easy to use with minimal setup

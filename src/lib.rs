@@ -130,9 +130,6 @@ pub mod hilbert_rtree_leg;
 pub mod hilbert_rtree;
 /// Hierarchical Hilbert R-tree spatial index for i32 coordinates (memory-efficient)
 pub mod hilbert_rtree_i32;
-/// Spatial query implementations for HilbertRTreeLeg (legacy reference implementation)
-#[doc(hidden)]
-pub mod queries;
 /// Integration tests for the library
 #[doc(hidden)]
 pub mod integration_test;
