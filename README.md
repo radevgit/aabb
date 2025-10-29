@@ -61,7 +61,9 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 - `HilbertRTreeI32::new()` or `AABBI32::new()` - Create a new empty tree
 - `HilbertRTreeI32::with_capacity(capacity)` or `AABBI32::with_capacity(capacity)` - Create a new tree with preallocated capacity
 - `add(min_x, min_y, max_x, max_y)` - (f64, i32) Add a bounding box
-- `build()` - (f64, i32) the spatial index (required before querying)
+- `build()` - (f64, i32) Build the spatial index (required before querying)
+- `save(path)` - (f64, i32) Save the built tree to a file for fast loading later
+- `load(path)` - (f64, i32) Load a previously saved tree from a file
 
 ### Queries
 
