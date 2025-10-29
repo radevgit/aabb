@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.4] - 2025-10-29
+- Multiple optimizations for query_intersecting() (43%)
+
 ## [0.6.3] - 2025-10-29
 - Save and Load Hilbert Tree to file
 

@@ -123,15 +123,19 @@ Index built in 85.22ms (i32)
 Running query benchmarks:
 -----------------------
 HilbertRTree::query_intersecting(f64)
-1000 searches 10%: 90ms
-1000 searches 1%: 18ms
+1000 searches 100%: 2074ms
+1000 searches 50%: 391ms
+1000 searches 10%: 89ms
+1000 searches 1%: 17ms
 1000 searches 0.01%: 2ms
 
 -----------------------
 HilbertRTreeI32::query_intersecting(i32)
+1000 searches 100%: 1389ms
+1000 searches 50%: 204ms
 1000 searches 10%: 47ms
 1000 searches 1%: 7ms
-1000 searches 0.01%: 0ms
+1000 searches 0.01%: 2ms
 
 Running neighbor benchmarks:
 -----------------------

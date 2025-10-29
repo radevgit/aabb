@@ -100,8 +100,18 @@ fn main() {
     let mut boxes_100 = Vec::new();  // 10% coverage: sqrt(0.1) * 100
     let mut boxes_10 = Vec::new();   // 1% coverage: 10.0
     let mut boxes_1 = Vec::new();    // 0.01% coverage: 1.0
+    let mut boxes_50 = Vec::new();   // 50% coverage: sqrt(0.5) * 100
+    let mut boxes_100_full = Vec::new();  // 100% coverage: full space
     
     for _ in 0..num_tests {
+        // Size to cover 100% of space: covers entire 100x100
+        boxes_100_full.push(0.0);
+        boxes_100_full.push(0.0);
+        boxes_100_full.push(100.0);
+        boxes_100_full.push(100.0);
+        
+        // Size to cover 50% of space: sqrt(0.5) * 100 ≈ 70.71
+        add_random_box(&mut rng, &mut boxes_50, (0.5_f64).sqrt() * 100.0);
         // Size to cover 10% of space: sqrt(0.1) * 100 ≈ 31.62
         add_random_box(&mut rng, &mut boxes_100, (0.1_f64).sqrt() * 100.0);
         // Size to cover 1% of space: 10.0
@@ -132,6 +142,8 @@ fn main() {
     // Run benchmarks with detailed timing
     println!("Running query benchmarks:");
     println!("-----------------------");
+    bench_search(&tree, &boxes_100_full, num_tests, "100");
+    bench_search(&tree, &boxes_50, num_tests, "50");
     bench_search(&tree, &boxes_100, num_tests, "10");
     bench_search(&tree, &boxes_10, num_tests, "1");
     bench_search(&tree, &boxes_1, num_tests, "0.01");
