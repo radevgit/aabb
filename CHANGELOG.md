@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2] - 2025-10-29
+- Refactored all query methods to call `results.clear()` at entry point before early returns, ensuring consistent behavior and eliminating need for manual clearing between invocations
+- Merged `src/queries.rs` into `src/hilbert_rtree_leg.rs` to consolidate all legacy code in a single file
+- Added comprehensive assertions to all query examples (9 examples) with meaningful validation of query results
+- Improved documentation with inline comments explaining expected query results
+- All 137 unit tests passing; examples validated with assertions
+
 ## [0.6.1] - 2025-10-28
 - Fix doctests
 
