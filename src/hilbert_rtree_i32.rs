@@ -724,21 +724,21 @@ impl HilbertRTreeI32 {
 
     // --- Private helpers ---
 
-    /// Get box at position (true zero-copy: direct pointer dereference)
+    /// Get box at position using read_unaligned
     #[inline]
     pub(crate) fn get_box(&self, pos: usize) -> BoxI32 {
         let idx = HEADER_SIZE + pos * size_of::<BoxI32>();
         unsafe {
-            *((&self.data[idx]) as *const u8 as *const BoxI32)
+            std::ptr::read_unaligned(&self.data[idx] as *const u8 as *const BoxI32)
         }
     }
 
-    /// Get index at position (true zero-copy: direct pointer dereference)
+    /// Get index at position using read_unaligned
     #[inline(always)]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let indices_start = HEADER_SIZE + self.total_nodes * size_of::<BoxI32>();
         unsafe {
-            *((&self.data[indices_start + pos * size_of::<u32>()] ) as *const u8 as *const u32)
+            std::ptr::read_unaligned(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32)
         }
     }
 

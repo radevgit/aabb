@@ -1174,25 +1174,21 @@ impl HilbertRTree {
         }
     }
 
-    // --- Private helpers ---
-
-    /// Get box at position (true zero-copy: direct pointer dereference)
+    /// Get box at position using read_unaligned
     #[inline(always)]
     pub(crate) fn get_box(&self, pos: usize) -> Box {
         let idx = HEADER_SIZE + pos * size_of::<Box>();
         unsafe {
-            // Direct dereference of the pointer - compiler generates a single memcpy at most
-            // LLVM will optimize this to a load if alignment allows, memcpy only if needed
-            *((&self.data[idx]) as *const u8 as *const Box)
+            std::ptr::read_unaligned(&self.data[idx] as *const u8 as *const Box)
         }
     }
 
-    /// Get index at position (true zero-copy: direct pointer dereference)
+    /// Get index at position using read_unaligned
     #[inline(always)]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let indices_start = HEADER_SIZE + self.total_nodes * size_of::<Box>();
         unsafe {
-            *((&self.data[indices_start + pos * size_of::<u32>()] ) as *const u8 as *const u32)
+            std::ptr::read_unaligned(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32)
         }
     }
 
