@@ -5,3 +5,8 @@ samply record ./target/debug/examples/perf
 samply record cargo run --release --example perf
 
 samply record --output=profile.json cargo run --release --example perf
+
+
+(with debug = 1 in cargo)
+> cargo build --example perf --release && samply record ./target/release/examples/perf
+

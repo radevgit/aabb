@@ -295,7 +295,7 @@ Building index...
 Profiling query_intersecting:
 ----------------------------------------
   1000 small queries (1%):    4.24ms (4.236µs/query)
-  1000 large queries (10%):   1805.40ms (1805.402µs/query)
+  1000 large queries (10%):   400.04ms (400.036µs/query)
 
 Profiling query_nearest_k:
 ----------------------------------------
@@ -334,6 +334,9 @@ Profiling query_in_direction_k:
 
 ==================================================
 
-
+Summary:
+--------
+Build dominates: 25.1%
+Queries (total): 352.22ms
 
 */

@@ -81,5 +81,15 @@ Profile Summary (i32 variant):
   Building: 96.11ms
   Querying: 11622.38ms
   Total:    11718.49ms
+______________________________________________________________
+Opt 4 - Vec for queue changed to VecDeque (40% speedup)
+
+Completed 100,000 queries in 6964.44ms (69.64µs per query)
+
+Profile Summary (i32 variant):
+  Building: 96.40ms
+  Querying: 6964.44ms
+  Total:    7060.84ms
+______________________________________________________________
 
 */

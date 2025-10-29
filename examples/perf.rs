@@ -124,6 +124,13 @@ Profile Summary:
   Total:    12493.08ms
 _______________________________________________________________________
 
+Opt 4 - Vec for queue changed to VecDeque (39.5% speedup)
+Completed 100,000 queries in 7504.98ms (75.05µs per query)
 
+Profile Summary:
+  Building: 101.63ms
+  Querying: 7504.98ms
+  Total:    7606.61ms
+_______________________________________________________________________
 
 */

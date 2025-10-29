@@ -17,6 +17,7 @@
 //! - `query_contained_within` - Find boxes contained within a rectangle
 
 use std::mem::size_of;
+use std::collections::VecDeque;
 
 /// Box structure: minX, minY, maxX, maxY (16 bytes total for i32)
 #[derive(Clone, Copy, Debug)]
@@ -408,7 +409,7 @@ impl HilbertRTreeI32 {
         }
 
         // Slow path: hierarchical traversal with pruning
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -426,7 +427,7 @@ impl HilbertRTreeI32 {
                 
                 let index = self.get_index(pos);
                 if pos >= self.num_items {
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
                 }
@@ -436,7 +437,7 @@ impl HilbertRTreeI32 {
                 break;
             }
             
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -485,7 +486,7 @@ impl HilbertRTreeI32 {
 
         results.clear();
         
-        let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
+        let mut queue = VecDeque::with_capacity(self.level_bounds.len() * 2);
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -512,7 +513,7 @@ impl HilbertRTreeI32 {
                 if pos < self.num_items {
                     results.push(index as usize);
                 } else {
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 }
             }
             
@@ -520,7 +521,7 @@ impl HilbertRTreeI32 {
                 break;
             }
             
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -555,7 +556,7 @@ impl HilbertRTreeI32 {
             return;
         }
         
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -573,7 +574,7 @@ impl HilbertRTreeI32 {
                 
                 let index = self.get_index(pos);
                 if pos >= self.num_items {
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
                 }
@@ -583,7 +584,7 @@ impl HilbertRTreeI32 {
                 break;
             }
             
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -621,7 +622,7 @@ impl HilbertRTreeI32 {
             return;
         }
         
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -637,7 +638,7 @@ impl HilbertRTreeI32 {
                     
                     let index = self.get_index(pos);
                     if pos >= self.num_items {
-                        queue.push((index >> 2) as usize);
+                        queue.push_back((index >> 2) as usize);
                     } else {
                         results.push(index as usize);
                     }
@@ -648,7 +649,7 @@ impl HilbertRTreeI32 {
                 break;
             }
             
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -686,7 +687,7 @@ impl HilbertRTreeI32 {
             return;
         }
         
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -702,7 +703,7 @@ impl HilbertRTreeI32 {
                     if node_box.max_x >= min_x && node_box.max_y >= min_y &&
                        node_box.min_x <= max_x && node_box.min_y <= max_y {
                         let index = self.get_index(pos);
-                        queue.push((index >> 2) as usize);
+                        queue.push_back((index >> 2) as usize);
                     }
                 } else {
                     // This is a leaf - check if fully contained
@@ -718,7 +719,7 @@ impl HilbertRTreeI32 {
                 break;
             }
             
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 

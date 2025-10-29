@@ -7,6 +7,7 @@
 //! Buffer invariants are maintained throughout the tree's lifetime.
 
 use std::mem::size_of;
+use std::collections::VecDeque;
 
 /// Box structure: minX, minY, maxX, maxY
 #[derive(Clone, Copy, Debug)]
@@ -314,7 +315,7 @@ impl HilbertRTree {
         }
 
         // Slow path: hierarchical traversal with pruning
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
 
         loop {
@@ -339,7 +340,7 @@ impl HilbertRTree {
                     results.push(index as usize);
                 } else {
                     // Parent node - add to queue for traversal
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 }
             }
 
@@ -347,7 +348,7 @@ impl HilbertRTree {
                 break;
             }
 
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -582,7 +583,6 @@ impl HilbertRTree {
         }
 
         // Extract results and sort by distance (ascending)
-        results.clear();
         let mut distance_pairs: Vec<(f64, u32)> = result_heap
             .into_iter()
             .map(|entry| (entry.dist_sq, entry.idx))
@@ -627,7 +627,7 @@ impl HilbertRTree {
             return;
         }
         
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -645,7 +645,7 @@ impl HilbertRTree {
                 
                 let index = self.get_index(pos);
                 if pos >= self.num_items {
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
                 }
@@ -654,8 +654,8 @@ impl HilbertRTree {
             if queue.is_empty() {
                 break;
             }
-            
-            node_index = queue.remove(0);
+
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -693,7 +693,7 @@ impl HilbertRTree {
             return;
         }
         
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -709,7 +709,7 @@ impl HilbertRTree {
                     
                     let index = self.get_index(pos);
                     if pos >= self.num_items {
-                        queue.push((index >> 2) as usize);
+                        queue.push_back((index >> 2) as usize);
                     } else {
                         results.push(index as usize);
                     }
@@ -719,8 +719,8 @@ impl HilbertRTree {
             if queue.is_empty() {
                 break;
             }
-            
-            node_index = queue.remove(0);
+
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -758,7 +758,7 @@ impl HilbertRTree {
             return;
         }
         
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -774,7 +774,7 @@ impl HilbertRTree {
                     if node_box.max_x >= min_x && node_box.max_y >= min_y &&
                        node_box.min_x <= max_x && node_box.min_y <= max_y {
                         let index = self.get_index(pos);
-                        queue.push((index >> 2) as usize);
+                        queue.push_back((index >> 2) as usize);
                     }
                 } else {
                     // This is a leaf - check if fully contained
@@ -789,8 +789,8 @@ impl HilbertRTree {
             if queue.is_empty() {
                 break;
             }
-            
-            node_index = queue.remove(0);
+
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -840,7 +840,7 @@ impl HilbertRTree {
 
         results.clear();
         
-        let mut queue = Vec::with_capacity(self.level_bounds.len() * 2);
+        let mut queue = VecDeque::with_capacity(self.level_bounds.len() * 2);
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -867,15 +867,15 @@ impl HilbertRTree {
                 if pos < self.num_items {
                     results.push(index as usize);
                 } else {
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 }
             }
             
             if queue.is_empty() {
                 break;
             }
-            
-            node_index = queue.remove(0);
+
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -915,7 +915,7 @@ impl HilbertRTree {
         results.clear();
         
         let radius_sq = radius * radius;
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -932,7 +932,7 @@ impl HilbertRTree {
                 if dist_sq <= radius_sq {
                     let index = self.get_index(pos);
                     if pos >= self.num_items {
-                        queue.push((index >> 2) as usize);
+                        queue.push_back((index >> 2) as usize);
                     } else {
                         results.push(index as usize);
                     }
@@ -942,8 +942,8 @@ impl HilbertRTree {
             if queue.is_empty() {
                 break;
             }
-            
-            node_index = queue.remove(0);
+
+            node_index = queue.pop_front().unwrap();
         }
     }
 
@@ -1013,7 +1013,7 @@ impl HilbertRTree {
         let sweep_max_x = max_x.max(max_x + dx);
         let sweep_max_y = max_y.max(max_y + dy);
 
-        let mut queue = Vec::new();
+        let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -1031,7 +1031,7 @@ impl HilbertRTree {
                 
                 let index = self.get_index(pos);
                 if pos >= self.num_items {
-                    queue.push((index >> 2) as usize);
+                    queue.push_back((index >> 2) as usize);
                 } else {
                     results.push(index as usize);
                 }
@@ -1041,7 +1041,7 @@ impl HilbertRTree {
                 break;
             }
             
-            node_index = queue.remove(0);
+            node_index = queue.pop_front().unwrap();
         }
     }
 

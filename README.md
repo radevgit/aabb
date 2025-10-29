@@ -113,30 +113,32 @@ Environment:
 - Processor: Intel Core i5-1240P
 - Kernel: Linux 6.8.0-86-generic 
 - CPU Frequency: ~1773-3500 MHz
+> cargo bench --bench query_intersecting_bench
+> cargo bench --bench query_intersecting_bench_i32
 
 Building index with 1000000 items...
 Index built in 116.58ms (f64)
-Index built in 88.07ms (i32)
+Index built in 85.22ms (i32)
 
 Running query benchmarks:
 -----------------------
 HilbertRTree::query_intersecting(f64)
-1000 searches 10%: 246ms
-1000 searches 1%: 19ms
+1000 searches 10%: 90ms
+1000 searches 1%: 18ms
 1000 searches 0.01%: 2ms
 
 -----------------------
 HilbertRTreeI32::query_intersecting(i32)
-1000 searches 10%: 169ms
-1000 searches 1%: 10ms
+1000 searches 10%: 47ms
+1000 searches 1%: 7ms
 1000 searches 0.01%: 0ms
 
 Running neighbor benchmarks:
 -----------------------
 query_nearest_k(f64)
-1000 searches of 100 neighbors: 21ms
-1 searches of 1000000 neighbors: 123ms
-100000 searches of 1 neighbors: 888ms
+1000 searches of 100 neighbors: 13ms
+1 searches of 1000000 neighbors: 111ms
+100000 searches of 1 neighbors: 556ms
 
 ```
 

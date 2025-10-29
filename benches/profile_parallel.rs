@@ -215,6 +215,28 @@ Profiling query_nearest_k (parallel):
   10000 queries k=10 (parallel 10×1000):      11.86ms (1.186µs/query)
   10000 queries k=100 (parallel 10×1000):      24.00ms (2.400µs/query)
   1000 queries k=1000 (parallel 10×100):      15.13ms (15.128µs/query)
+_________________________________________________________________________
+OPT4
+
+Generating 1000000 random boxes...
+  Generated in 21.72ms
+
+Building index...
+  Index built in 114.88ms
+
+Profiling query_intersecting (parallel):
+----------------------------------------
+  10000 small queries (parallel 10×1000):   6.08ms (0.608µs/query)
+  10000 large queries (parallel 10×1000):   844.51ms (84.451µs/query)
+
+Profiling query_nearest_k (parallel):
+----------------------------------------
+  10000 queries k=1 (parallel 10×1000):      10.76ms (1.076µs/query)
+  10000 queries k=10 (parallel 10×1000):      12.03ms (1.203µs/query)
+  10000 queries k=100 (parallel 10×1000):      24.27ms (2.427µs/query)
+  1000 queries k=1000 (parallel 10×100):      14.85ms (14.848µs/query)
+
+
 
 
 */
