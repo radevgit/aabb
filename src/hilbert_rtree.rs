@@ -1313,6 +1313,161 @@ impl HilbertRTree {
             std::ptr::write_unaligned(right_idx_ptr, left_idx);
         }
     }
+
+    /// Saves the built Hilbert R-tree to a file.
+    ///
+    /// Serializes the complete tree structure including the header, buffer, metadata, and level bounds
+    /// to enable fast loading without rebuilding. The file format includes a magic number and version
+    /// for integrity checking during load.
+    ///
+    /// # Arguments
+    /// * `path` - File path where the tree will be saved
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be created or written to.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut tree = HilbertRTree::with_capacity(3);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);
+    /// tree.add(1.0, 1.0, 2.0, 2.0);
+    /// tree.build();
+    /// tree.save("my_tree.bin")?;
+    /// ```
+    pub fn save<P: AsRef<std::path::Path>>(&self, path: P) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(path)?;
+        
+        // Write magic number and version (file header for validation)
+        file.write_all(&[0xfb])?;  // magic (f64 variant)
+        file.write_all(&[0x01])?;  // version 1 (f64 variant)
+        
+        // Write node_size
+        file.write_all(&(self.node_size as u32).to_le_bytes())?;
+        
+        // Write num_items
+        file.write_all(&(self.num_items as u32).to_le_bytes())?;
+        
+        // Write total_nodes
+        file.write_all(&(self.total_nodes as u32).to_le_bytes())?;
+        
+        // Write level_bounds length
+        file.write_all(&(self.level_bounds.len() as u32).to_le_bytes())?;
+        
+        // Write level_bounds
+        for &bound in &self.level_bounds {
+            file.write_all(&(bound as u32).to_le_bytes())?;
+        }
+        
+        // Write bounds
+        file.write_all(&self.bounds.min_x.to_le_bytes())?;
+        file.write_all(&self.bounds.min_y.to_le_bytes())?;
+        file.write_all(&self.bounds.max_x.to_le_bytes())?;
+        file.write_all(&self.bounds.max_y.to_le_bytes())?;
+        
+        // Write data buffer
+        file.write_all(&(self.data.len() as u32).to_le_bytes())?;
+        file.write_all(&self.data)?;
+        
+        Ok(())
+    }
+
+    /// Loads a Hilbert R-tree from a file.
+    ///
+    /// Deserializes a tree that was previously saved with `save()`.
+    /// Validates the file format by checking the magic number and version.
+    /// The loaded tree is immediately ready for querying without rebuilding.
+    ///
+    /// # Arguments
+    /// * `path` - File path of the saved tree
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read, the format is invalid,
+    /// or the magic number/version check fails.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let tree = HilbertRTree::load("my_tree.bin")?;
+    /// let mut results = Vec::new();
+    /// tree.query_intersecting(0.0, 0.0, 1.0, 1.0, &mut results);
+    /// ```
+    pub fn load<P: AsRef<std::path::Path>>(path: P) -> std::io::Result<Self> {
+        use std::io::Read;
+        let mut file = std::fs::File::open(path)?;
+        
+        // Read and validate magic number
+        let mut magic_buf = [0u8; 1];
+        file.read_exact(&mut magic_buf)?;
+        if magic_buf[0] != 0xfb {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid file format: magic number mismatch",
+            ));
+        }
+        
+        // Read and validate version
+        let mut version_buf = [0u8; 1];
+        file.read_exact(&mut version_buf)?;
+        if version_buf[0] != 0x01 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Unsupported file version (expected f64 variant v1, got different version)",
+            ));
+        }
+        
+        // Read node_size
+        let mut buf = [0u8; 4];
+        file.read_exact(&mut buf)?;
+        let node_size = u32::from_le_bytes(buf) as usize;
+        
+        // Read num_items
+        file.read_exact(&mut buf)?;
+        let num_items = u32::from_le_bytes(buf) as usize;
+        
+        // Read total_nodes
+        file.read_exact(&mut buf)?;
+        let total_nodes = u32::from_le_bytes(buf) as usize;
+        
+        // Read level_bounds length
+        file.read_exact(&mut buf)?;
+        let level_bounds_len = u32::from_le_bytes(buf) as usize;
+        
+        // Read level_bounds
+        let mut level_bounds = Vec::with_capacity(level_bounds_len);
+        for _ in 0..level_bounds_len {
+            file.read_exact(&mut buf)?;
+            level_bounds.push(u32::from_le_bytes(buf) as usize);
+        }
+        
+        // Read bounds
+        let mut f64_buf = [0u8; 8];
+        file.read_exact(&mut f64_buf)?;
+        let min_x = f64::from_le_bytes(f64_buf);
+        file.read_exact(&mut f64_buf)?;
+        let min_y = f64::from_le_bytes(f64_buf);
+        file.read_exact(&mut f64_buf)?;
+        let max_x = f64::from_le_bytes(f64_buf);
+        file.read_exact(&mut f64_buf)?;
+        let max_y = f64::from_le_bytes(f64_buf);
+        
+        let bounds = Box::new(min_x, min_y, max_x, max_y);
+        
+        // Read data buffer
+        file.read_exact(&mut buf)?;
+        let data_len = u32::from_le_bytes(buf) as usize;
+        let mut data = vec![0u8; data_len];
+        file.read_exact(&mut data)?;
+        
+        Ok(Self {
+            data,
+            level_bounds,
+            node_size,
+            num_items,
+            position: 0,
+            bounds,
+            total_nodes,
+        })
+    }
 }
 
 impl Default for HilbertRTree {
