@@ -292,8 +292,6 @@ impl HilbertRTree {
             return;
         }
 
-        
-
         // Query area heuristic for early termination decision
         let query_area = (max_x - min_x) * (max_y - min_y);
         let bounds_area = (self.bounds.max_x - self.bounds.min_x)
@@ -1178,24 +1176,22 @@ impl HilbertRTree {
 
     // --- Private helpers ---
 
-    /// Get box at position (using slice `from_raw_parts` - Option 4)
+    /// Get box at position (direct pointer read - no slice allocation)
     #[inline(always)]
     pub(crate) fn get_box(&self, pos: usize) -> Box {
         let idx = HEADER_SIZE + pos * size_of::<Box>();
-        let box_slice = unsafe {
-            std::slice::from_raw_parts(&self.data[idx] as *const u8 as *const Box, 1)
-        };
-        box_slice[0]
+        unsafe {
+            std::ptr::read_unaligned(&self.data[idx] as *const u8 as *const Box)
+        }
     }
 
-    /// Get index at position (using slice `from_raw_parts` - Option 4)
+    /// Get index at position (direct pointer read - no slice allocation)
     #[inline(always)]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let indices_start = HEADER_SIZE + self.total_nodes * size_of::<Box>();
-        let idx_slice = unsafe {
-            std::slice::from_raw_parts(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32, 1)
-        };
-        idx_slice[0]
+        unsafe {
+            std::ptr::read_unaligned(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32)
+        }
     }
 
     /// Get distance along an axis

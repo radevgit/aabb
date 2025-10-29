@@ -1,0 +1,3 @@
+cargo build --example perf
+
+samply record ./target/debug/examples/perf

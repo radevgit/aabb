@@ -724,24 +724,22 @@ impl HilbertRTreeI32 {
 
     // --- Private helpers ---
 
-    /// Get box at position
+    /// Get box at position (direct pointer read - no slice allocation)
     #[inline]
     pub(crate) fn get_box(&self, pos: usize) -> BoxI32 {
         let idx = HEADER_SIZE + pos * size_of::<BoxI32>();
-        let box_slice = unsafe {
-            std::slice::from_raw_parts(&self.data[idx] as *const u8 as *const BoxI32, 1)
-        };
-        box_slice[0]
+        unsafe {
+            std::ptr::read_unaligned(&self.data[idx] as *const u8 as *const BoxI32)
+        }
     }
 
-    /// Get index at position
+    /// Get index at position (direct pointer read - no slice allocation)
     #[inline(always)]
     pub(crate) fn get_index(&self, pos: usize) -> u32 {
         let indices_start = HEADER_SIZE + self.total_nodes * size_of::<BoxI32>();
-        let idx_slice = unsafe {
-            std::slice::from_raw_parts(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32, 1)
-        };
-        idx_slice[0]
+        unsafe {
+            std::ptr::read_unaligned(&self.data[indices_start + pos * size_of::<u32>()] as *const u8 as *const u32)
+        }
     }
 
     /// Find upper bound of a node in `level_bounds`
