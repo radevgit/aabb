@@ -41,6 +41,10 @@ harness = false
 name = "profile_bench"
 harness = false
 
+[[bench]]
+name = "profile_parallel"
+harness = false
+
 [lints.rust]
 keyword_idents_2024 = "forbid"
 non_ascii_idents = "forbid"

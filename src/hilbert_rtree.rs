@@ -387,8 +387,8 @@ impl HilbertRTree {
         k: usize,
         results: &mut Vec<usize>,
     ) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() || k == 0 {
-            results.clear();
             return;
         }
 
@@ -624,11 +624,10 @@ impl HilbertRTree {
     /// // Results contain both box 0 and box 1 (point is inside both)
     /// ```
     pub fn query_point(&self, x: f64, y: f64, results: &mut Vec<usize>) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
-
-        results.clear();
         
         let mut queue = Vec::new();
         let mut node_index = self.total_nodes - 1;
@@ -691,11 +690,10 @@ impl HilbertRTree {
     /// // Results contain box 0 and box 1 (both contain the query rectangle)
     /// ```
     pub fn query_contain(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
-
-        results.clear();
         
         let mut queue = Vec::new();
         let mut node_index = self.total_nodes - 1;
@@ -757,11 +755,10 @@ impl HilbertRTree {
     /// // Results contain only box 1 (box 0 is too large, box 2 is outside)
     /// ```
     pub fn query_contained_within(&self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, results: &mut Vec<usize>) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() {
             return;
         }
-
-        results.clear();
         
         let mut queue = Vec::new();
         let mut node_index = self.total_nodes - 1;
@@ -996,12 +993,10 @@ impl HilbertRTree {
         distance: f64,
         results: &mut Vec<usize>,
     ) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() || distance < 0.0 {
-            results.clear();
             return;
         }
-
-        results.clear();
         
         // Normalize direction vector
         let dir_len_sq = dir_x * dir_x + dir_y * dir_y;

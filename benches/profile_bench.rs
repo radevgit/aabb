@@ -82,7 +82,6 @@ fn main() {
     let mut results = Vec::new();
     let query_start = Instant::now();
     for (min_x, min_y, max_x, max_y) in &test_queries_small {
-        results.clear();
         tree.query_intersecting(*min_x, *min_y, *max_x, *max_y, &mut results);
     }
     let small_query_time = query_start.elapsed();
@@ -94,10 +93,8 @@ fn main() {
     );
 
     // Large queries
-    results.clear();
     let query_start = Instant::now();
     for (min_x, min_y, max_x, max_y) in &test_queries_large {
-        results.clear();
         tree.query_intersecting(*min_x, *min_y, *max_x, *max_y, &mut results);
     }
     let large_query_time = query_start.elapsed();
@@ -120,7 +117,6 @@ fn main() {
 
         let query_start = Instant::now();
         for i in 0..num_queries {
-            results.clear();
             let x = coords[4 * i];
             let y = coords[4 * i + 1];
             tree.query_nearest_k(x, y, k, &mut results);
