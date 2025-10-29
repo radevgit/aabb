@@ -416,21 +416,44 @@ impl HilbertRTreeI32 {
             let node_end = self.upper_bound(node_index);
             let end_pos = (node_index + self.node_size).min(node_end);
             
-            for pos in node_index..end_pos {
+            // Process groups of 2 nodes at a time
+            let mut pos = node_index;
+            while pos + 2 <= end_pos {
+                let boxes = self.get_boxes_batch(pos);
+                
+                for i in 0..2 {
+                    let node_box = boxes[i];
+                    if !(max_x < node_box.min_x || max_y < node_box.min_y ||
+                       min_x > node_box.max_x || min_y > node_box.max_y)
+                    {
+                        let current_pos = pos + i;
+                        let index = self.get_index(current_pos);
+                        if current_pos >= self.num_items {
+                            queue.push_back((index >> 2) as usize);
+                        } else {
+                            results.push(index as usize);
+                        }
+                    }
+                }
+                
+                pos += 2;
+            }
+            
+            // Process remaining nodes (1) individually
+            while pos < end_pos {
                 let node_box = self.get_box(pos);
                 
-                // Check if node bbox intersects with query bbox
-                if max_x < node_box.min_x || max_y < node_box.min_y ||
-                   min_x > node_box.max_x || min_y > node_box.max_y {
-                    continue;
+                if !(max_x < node_box.min_x || max_y < node_box.min_y ||
+                   min_x > node_box.max_x || min_y > node_box.max_y)
+                {
+                    let index = self.get_index(pos);
+                    if pos >= self.num_items {
+                        queue.push_back((index >> 2) as usize);
+                    } else {
+                        results.push(index as usize);
+                    }
                 }
-                
-                let index = self.get_index(pos);
-                if pos >= self.num_items {
-                    queue.push_back((index >> 2) as usize);
-                } else {
-                    results.push(index as usize);
-                }
+                pos += 1;
             }
             
             if queue.is_empty() {
@@ -731,6 +754,16 @@ impl HilbertRTreeI32 {
         let idx = HEADER_SIZE + pos * size_of::<BoxI32>();
         unsafe {
             std::ptr::read_unaligned(&self.data[idx] as *const u8 as *const BoxI32)
+        }
+    }
+
+    /// Get 2 boxes at once for batch processing - single read_unaligned call
+    #[allow(dead_code)]
+    #[inline]
+    pub(crate) fn get_boxes_batch(&self, start_pos: usize) -> [BoxI32; 2] {
+        let base_idx = HEADER_SIZE + start_pos * size_of::<BoxI32>();
+        unsafe {
+            std::ptr::read_unaligned(self.data.as_ptr().add(base_idx) as *const [BoxI32; 2])
         }
     }
 

@@ -133,4 +133,15 @@ Profile Summary:
   Total:    7606.61ms
 _______________________________________________________________________
 
+Opt 5 - Use baches for get_box() 4
+
+Completed 100,000 queries in 6977.03ms (69.77µs per query)
+
+Profile Summary:
+  Building: 99.46ms
+  Querying: 6977.03ms
+  Total:    7076.49ms
+
+_______________________________________________________________________
+
 */

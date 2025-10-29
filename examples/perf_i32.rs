@@ -91,5 +91,15 @@ Profile Summary (i32 variant):
   Querying: 6964.44ms
   Total:    7060.84ms
 ______________________________________________________________
+Opt 5 - use batches for get_box() 2                             
+
+Completed 100,000 queries in 6389.59ms (63.90µs per query)
+
+Profile Summary (i32 variant):
+  Building: 97.27ms
+  Querying: 6389.59ms
+  Total:    6486.86ms
+______________________________________________________________
+
 
 */
