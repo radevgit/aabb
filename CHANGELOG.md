@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.3] - 2025-10-29
+- Save and Load Hilbert Tree to file
+
 ## [0.6.2] - 2025-10-29
 - Refactored all query methods to call `results.clear()` at entry point before early returns, ensuring consistent behavior and eliminating need for manual clearing between invocations
 - Merged `src/queries.rs` into `src/hilbert_rtree_leg.rs` to consolidate all legacy code in a single file

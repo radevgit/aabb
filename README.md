@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-aabb = "0.5"
+aabb = "0.6"
 ```
 
 ### Basic Example
