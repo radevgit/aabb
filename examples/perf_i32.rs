@@ -74,6 +74,9 @@ fn main() {
 
 
 /*
+cargo build --release --example perf_i32
+./target/release/examples/perf_i32
+
 Base
 Completed 100,000 queries in 11622.38ms (116.22µs per query)
 
@@ -100,6 +103,12 @@ Profile Summary (i32 variant):
   Querying: 6389.59ms
   Total:    6486.86ms
 ______________________________________________________________
+Opt 7 - use rust sort methods instead of custom variant of quicksort
 
+Profile Summary (i32 variant):
+  Building: 70.44ms
+  Querying: 6082.92ms
+  Total:    6153.36ms
+______________________________________________________________
 
 */

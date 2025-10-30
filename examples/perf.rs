@@ -88,6 +88,10 @@ fn main() {
 
 
 /*
+cargo build --release --example perf
+./target/release/examples/perf
+samply record cargo run --release --example perf
+
 Building large spatial index...
 Index built in 97.08ms
 Index size: 1000000 items

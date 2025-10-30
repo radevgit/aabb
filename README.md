@@ -117,8 +117,8 @@ Environment:
 > cargo bench --bench query_intersecting_bench_i32
 
 Building index with 1000000 items...
-Index built in 116.58ms (f64)
-Index built in 85.22ms (i32)
+Index built in 89.28ms (f64)
+Index built in 63.64ms (i32)
 
 Running query benchmarks:
 -----------------------
@@ -131,17 +131,17 @@ HilbertRTree::query_intersecting(f64)
 
 -----------------------
 HilbertRTreeI32::query_intersecting(i32)
-1000 searches 100%: 1389ms
-1000 searches 50%: 204ms
-1000 searches 10%: 47ms
-1000 searches 1%: 7ms
-1000 searches 0.01%: 2ms
+1000 searches 100%: 1397ms
+1000 searches 50%: 197ms
+1000 searches 10%: 42ms
+1000 searches 1%: 6ms
+1000 searches 0.01%: 0ms
 
 Running neighbor benchmarks:
 -----------------------
 query_nearest_k(f64)
 1000 searches of 100 neighbors: 13ms
-1 searches of 1000000 neighbors: 111ms
+1 searches of 1000000 neighbors: 107ms
 100000 searches of 1 neighbors: 556ms
 
 ```

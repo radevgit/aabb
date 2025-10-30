@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.5] - 2025-10-30
+- Few small optimization in the tree build phase (5%)
+
 ## [0.6.4] - 2025-10-29
 - Multiple optimizations for query_intersecting() (43%)
 

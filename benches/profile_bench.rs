@@ -338,5 +338,63 @@ Summary:
 --------
 Build dominates: 25.1%
 Queries (total): 352.22ms
+_________________________________________________________________________________
+Opt 7 - use rust sorting instead of custom quicksort
+
+Generating 1000000 random boxes...
+  Generated in 30.14ms
+
+Building index...
+  Add items:        11.30ms
+  Build tree:       84.25ms
+  Total build:      95.57ms
+
+Profiling query_intersecting:
+----------------------------------------
+  1000 small queries (1%):    4.35ms (4.349µs/query)
+  1000 large queries (10%):   352.46ms (352.463µs/query)
+
+Profiling query_nearest_k:
+----------------------------------------
+  1000 queries k=1:          5.81ms (5.811µs/query, avg 1.0 results)
+  1000 queries k=10:          5.99ms (5.990µs/query, avg 10.0 results)
+  1000 queries k=100:          12.94ms (12.944µs/query, avg 100.0 results)
+  100 queries k=1000:          7.94ms (79.404µs/query, avg 1000.0 results)
+
+Profiling query_point:
+----------------------------------------
+  10000 queries:               9.75ms (0.975µs/query, avg 24.0 results)
+
+Profiling query_intersecting_k:
+----------------------------------------
+  10000 queries k=100 (small): 16.71ms (1.671µs/query, avg 100.0 results)
+
+Profiling query_contain:
+----------------------------------------
+  1000 queries (point-like):  1.65ms (1.645µs/query, avg 21.0 results)
+
+Profiling query_contained_within:
+----------------------------------------
+  1000 queries (small):       2.35ms (2.354µs/query, avg 28.0 results)
+
+Profiling query_circle:
+----------------------------------------
+  1000 queries (radius=5):    46.70ms (46.697µs/query, avg 8830.0 results)
+
+Profiling query_in_direction:
+----------------------------------------
+  1000 queries (small):       11.95ms (11.950µs/query, avg 1752.0 results)
+
+Profiling query_in_direction_k:
+----------------------------------------
+  1000 queries k=50 (small):  19.75ms (19.746µs/query, avg 50.0 results)
+
+==================================================
+
+Summary:
+--------
+Build dominates: 21.1%
+Queries (total): 356.81ms
+
 
 */

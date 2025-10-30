@@ -235,7 +235,23 @@ Profiling query_nearest_k (parallel):
   10000 queries k=10 (parallel 10×1000):      12.03ms (1.203µs/query)
   10000 queries k=100 (parallel 10×1000):      24.27ms (2.427µs/query)
   1000 queries k=1000 (parallel 10×100):      14.85ms (14.848µs/query)
+________________________________________________________________________
+OPT 7 - using rust sort instead of custom quicksort
+Building index...
+  Index built in 89.97ms
 
+Profiling query_intersecting (parallel):
+----------------------------------------
+  10000 small queries (parallel 10×1000):   6.54ms (0.654µs/query)
+  10000 large queries (parallel 10×1000):   701.32ms (70.132µs/query)
+
+Profiling query_nearest_k (parallel):
+----------------------------------------
+  10000 queries k=1 (parallel 10×1000):      10.39ms (1.039µs/query)
+  10000 queries k=10 (parallel 10×1000):      11.19ms (1.119µs/query)
+  10000 queries k=100 (parallel 10×1000):      22.95ms (2.295µs/query)
+  1000 queries k=1000 (parallel 10×100):      14.07ms (14.069µs/query)
+_________________________________________________________________________
 
 
 
