@@ -221,17 +221,48 @@ impl HilbertRTree {
             hilbert_values[i] = hilbert_xy_to_index(hx, hy);
         }
 
-        // Initialize leaf indices BEFORE sorting
+        // Create an indirection array to track sorting permutations
+        // This allows us to use Rust's optimized sort (introsort) instead of custom quicksort
+        let mut sort_indices: Vec<usize> = (0..num_items).collect();
+        
+        // Sort indices by their corresponding Hilbert values
+        sort_indices.sort_unstable_by_key(|&i| hilbert_values[i]);
+        
+        // Apply the permutation to boxes
+        let mut temp_data = vec![0u8; num_items * size_of::<Box>()];
+        
+        for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
+            let old_box_idx = HEADER_SIZE + old_pos * size_of::<Box>();
+            let new_box_idx = new_pos * size_of::<Box>();
+            temp_data[new_box_idx..new_box_idx + size_of::<Box>()]
+                .copy_from_slice(&self.data[old_box_idx..old_box_idx + size_of::<Box>()]);
+        }
+        
+        // Copy sorted boxes back to data
+        for i in 0..num_items {
+            let src_idx = i * size_of::<Box>();
+            let dst_idx = HEADER_SIZE + i * size_of::<Box>();
+            self.data[dst_idx..dst_idx + size_of::<Box>()]
+                .copy_from_slice(&temp_data[src_idx..src_idx + size_of::<Box>()]);
+        }
+        
+        // Apply the same permutation to hilbert_values array to keep it in sync with boxes
+        let mut temp_hilbert = vec![0_u32; num_items];
+        for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
+            temp_hilbert[new_pos] = hilbert_values[old_pos];
+        }
+        // Note: We keep temp_hilbert for consistency but don't need it for later operations
+        // since the indices array contains the original box IDs
+        
+        // Initialize leaf indices AFTER sorting - map new position to original box ID
         let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         for i in 0..num_items {
             let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
-                std::ptr::write_unaligned(idx_ptr, i as u32);
+                // sort_indices[i] tells us which original box is now at position i
+                std::ptr::write_unaligned(idx_ptr, sort_indices[i] as u32);
             }
         }
-
-        // Sort leaves by Hilbert value
-        self.quicksort(&mut hilbert_values, 0, num_items - 1);
 
         // Build parent levels
         let mut pos = 0_usize;
@@ -1273,98 +1304,6 @@ impl HilbertRTree {
             self.level_bounds[idx]
         } else {
             self.total_nodes
-        }
-    }
-
-    /// Quicksort by Hilbert value, also reordering boxes and indices
-    fn quicksort(&mut self, hilbert_values: &mut [u32], left: usize, right: usize) {
-        if left >= right {
-            return;
-        }
-
-        let pivot = self.median_of_three(hilbert_values, left, right);
-        let mut pivot_left = left as i32 - 1;
-        let mut pivot_right = right as i32 + 1;
-
-        loop {
-            loop {
-                pivot_left += 1;
-                if hilbert_values[pivot_left as usize] >= pivot {
-                    break;
-                }
-            }
-            loop {
-                pivot_right -= 1;
-                if hilbert_values[pivot_right as usize] <= pivot {
-                    break;
-                }
-            }
-
-            if pivot_left >= pivot_right {
-                break;
-            }
-
-            self.swap_elements(hilbert_values, pivot_left as usize, pivot_right as usize);
-        }
-
-        if pivot_right as usize > left {
-            self.quicksort(hilbert_values, left, pivot_right as usize);
-        }
-        if (pivot_right as usize + 1) < right {
-            self.quicksort(hilbert_values, pivot_right as usize + 1, right);
-        }
-    }
-
-    /// Median of three for quicksort pivot selection
-    #[inline]
-    fn median_of_three(&self, values: &[u32], left: usize, right: usize) -> u32 {
-        let mid = (left + right) / 2;
-        let a = values[left];
-        let b = values[mid];
-        let c = values[right];
-
-        let x = a.max(b);
-        if c > x {
-            x
-        } else if x == a {
-            b.max(c)
-        } else if x == b {
-            a.max(c)
-        } else {
-            c
-        }
-    }
-
-    /// Swap two elements (including boxes and indices)
-    fn swap_elements(&mut self, hilbert_values: &mut [u32], left: usize, right: usize) {
-        hilbert_values.swap(left, right);
-
-        // Swap boxes
-        let left_box_idx = HEADER_SIZE + left * size_of::<Box>();
-        let right_box_idx = HEADER_SIZE + right * size_of::<Box>();
-        
-        let left_box = self.get_box(left);
-        let right_box = self.get_box(right);
-        
-        let left_ptr = &mut self.data[left_box_idx] as *mut u8 as *mut Box;
-        let right_ptr = &mut self.data[right_box_idx] as *mut u8 as *mut Box;
-        
-        unsafe {
-            std::ptr::write_unaligned(left_ptr, right_box);
-            std::ptr::write_unaligned(right_ptr, left_box);
-        }
-
-        // Swap indices
-        let indices_start = HEADER_SIZE + self.total_nodes * size_of::<Box>();
-        
-        let left_idx_ptr = &mut self.data[indices_start + left * size_of::<u32>()] as *mut u8 as *mut u32;
-        let right_idx_ptr = &mut self.data[indices_start + right * size_of::<u32>()] as *mut u8 as *mut u32;
-        
-        unsafe {
-            let left_idx = std::ptr::read_unaligned(left_idx_ptr);
-            let right_idx = std::ptr::read_unaligned(right_idx_ptr);
-            std::ptr::write_unaligned(left_idx_ptr, right_idx);
-            std::ptr::write_unaligned(right_idx_ptr, left_idx);
         }
     }
 
