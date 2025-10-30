@@ -59,11 +59,31 @@ pub struct HilbertRTreeI32 {
     pub(crate) bounds: BoxI32,
     /// Total nodes in tree (cached from level_bounds.last())
     total_nodes: usize,
+    /// Pre-allocated capacity in bytes (0 if not pre-allocated)
+    allocated_capacity: usize,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
 const DEFAULT_NODE_SIZE: usize = 16;
 const HEADER_SIZE: usize = 8; // bytes
+
+/// Helper: Estimate total nodes in tree given item count
+/// For a tree with node_size, total nodes ≈ N + N/node_size + N/node_size^2 + ...
+/// This converges to: N * node_size / (node_size - 1)
+#[inline]
+fn estimate_total_nodes(num_items: usize, node_size: usize) -> usize {
+    if num_items == 0 {
+        return 0;
+    }
+    (num_items * node_size) / (node_size - 1) + 1
+}
+
+/// Helper: Calculate required buffer size for estimated nodes
+#[inline]
+fn estimate_buffer_size(num_items: usize, node_size: usize) -> usize {
+    let estimated_nodes = estimate_total_nodes(num_items, node_size);
+    HEADER_SIZE + estimated_nodes * (size_of::<BoxI32>() + size_of::<u32>())
+}
 
 impl HilbertRTreeI32 {
     /// Creates a new empty Hilbert R-tree for i32 coordinates
@@ -94,14 +114,17 @@ impl HilbertRTreeI32 {
     /// ```
     pub fn with_capacity(capacity: usize) -> Self {
         let data = if capacity > 0 {
-            let v = vec![0; HEADER_SIZE + capacity * size_of::<BoxI32>()];
-            v
+            let needed_size = estimate_buffer_size(capacity, DEFAULT_NODE_SIZE);
+            Vec::with_capacity(needed_size)
         } else {
             Vec::new()
         };
         
+        let allocated_capacity = data.capacity();
+        
         Self {
             data,
+            allocated_capacity,
             level_bounds: Vec::new(),
             node_size: DEFAULT_NODE_SIZE,
             num_items: 0,
@@ -132,20 +155,22 @@ impl HilbertRTreeI32 {
     /// assert_eq!(tree.len(), 2);
     /// ```
     pub fn add(&mut self, min_x: i32, min_y: i32, max_x: i32, max_y: i32) {
-        // Store boxes temporarily - will be reorganized during build
-        if self.num_items == 0 {
-            // Pre-allocate data buffer on first add - need space for header + boxes
-            let capacity = 128; // Start with reasonable capacity
-            self.data.resize(HEADER_SIZE + capacity * size_of::<BoxI32>(), 0);
+        // Calculate required size for this item
+        let required_size = estimate_buffer_size(self.num_items + 1, self.node_size);
+        
+        // Allocate if needed
+        if required_size > self.data.capacity() {
+            let new_capacity = (self.data.capacity() * 2).max(required_size);
+            self.data.reserve(new_capacity - self.data.capacity());
+            self.allocated_capacity = self.data.capacity();
         }
-
-        // Check if we need to expand
-        let required_size = HEADER_SIZE + (self.num_items + 1) * size_of::<BoxI32>();
-        if required_size > self.data.len() {
-            self.data.resize((self.data.len() * 2).max(required_size), 0);
-        }
-
+        
+        // Ensure len is sufficient for writing at the position we need
         let box_idx = HEADER_SIZE + self.num_items * size_of::<BoxI32>();
+        if box_idx + size_of::<BoxI32>() > self.data.len() {
+            self.data.resize(box_idx + size_of::<BoxI32>(), 0);
+        }
+        
         let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut BoxI32;
         unsafe {
             std::ptr::write_unaligned(box_ptr, BoxI32::new(min_x, min_y, max_x, max_y));
@@ -206,7 +231,14 @@ impl HilbertRTreeI32 {
 
         // Resize data buffer to final size
         let data_size = HEADER_SIZE + total_nodes * (size_of::<BoxI32>() + size_of::<u32>());
-        self.data.resize(data_size, 0);
+        if data_size > self.data.capacity() {
+            self.data.reserve(data_size - self.data.capacity());
+            self.allocated_capacity = self.data.capacity();
+        }
+        // Ensure len is sufficient for all writes during build
+        if self.data.len() < data_size {
+            self.data.resize(data_size, 0);
+        }
 
         // Write header
         self.data[0] = 0xfc; // magic (different from f64 variant 0xfb)
@@ -1013,6 +1045,7 @@ impl HilbertRTreeI32 {
             position: 0,
             bounds,
             total_nodes,
+            allocated_capacity: data_len,
         })
     }
 }
