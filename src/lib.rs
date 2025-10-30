@@ -38,49 +38,40 @@
 //! // Output: Found 3 intersecting boxes: [0, 1, 3]
 //!
 //! // You can reuse the results vector for multiple queries
-//! results.clear();
 //! tree.query_intersecting(4.0, 4.0, 7.0, 7.0, &mut results);
 //! println!("Found {} boxes in distant region: {:?}", results.len(), results);
 //! // Output: Found 1 boxes in distant region: [2]
 //!
 //! // Point queries - find boxes containing a specific point
-//! results.clear();
 //! tree.query_point(1.8, 1.8, &mut results);
 //! println!("Point (1.8, 1.8) is in boxes: {:?}", results);
 //!
 //! // Containment queries - find boxes that contain a rectangle
-//! results.clear();
 //! tree.query_contain(1.2, 1.2, 1.8, 1.8, &mut results);
 //! println!("Boxes containing rectangle: {:?}", results);
 //!
 //! // K-limited queries - find first K intersecting boxes for performance
-//! results.clear();
 //! tree.query_intersecting_k(0.0, 0.0, 3.0, 3.0, 2, &mut results);
 //! println!("First 2 intersecting boxes: {:?}", results);
 //!
 //! // K-nearest neighbor queries - use k=1 for single nearest
-//! results.clear();
 //! tree.query_nearest_k(2.0, 2.0, 1, &mut results);
 //! println!("Nearest box to (2.0, 2.0): {:?}", results);
 //!
 //! // Distance-based queries - find boxes in circular region
-//! results.clear();
 //! tree.query_circle(1.5, 1.5, 2.0, &mut results);
 //! println!("Boxes in circle: {:?}", results);
 //!
 //! // K-nearest neighbor queries
-//! results.clear();
 //! tree.query_nearest_k(2.0, 2.0, 2, &mut results);
 //! println!("2 nearest boxes to (2.0, 2.0): {:?}", results);
 //!
 //! // Directional queries - find boxes in rectangle's movement path
-//! results.clear();
 //! // Start with rectangle (1.5, 1.5) x (2.5, 2.5) and move right by distance 3
 //! tree.query_in_direction(1.5, 1.5, 2.5, 2.5, 1.0, 0.0, 3.0, &mut results);
 //! println!("Boxes intersecting movement path: {:?}", results);
 //!
 //! // Directional K-nearest queries - find K nearest boxes in movement path
-//! results.clear();
 //! tree.query_in_direction_k(1.5, 1.5, 2.5, 2.5, 1.0, 0.0, 2, 3.0, &mut results);
 //! println!("2 nearest boxes in movement path: {:?}", results);
 //!
