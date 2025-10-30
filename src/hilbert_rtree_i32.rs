@@ -532,6 +532,42 @@ impl HilbertRTreeI32 {
         }
     }
 
+    
+    /// Finds all boxes that intersect with a box already in the index.
+    ///
+    /// This query is useful when you have an item already added to the tree and want to find
+    /// all other items that intersect with it, excluding the query item itself. It's more
+    /// convenient than calling `query_intersecting()` with manually extracted bounds, and
+    /// avoids redundant lookups and self-intersection checks.
+    ///
+    /// # Arguments
+    /// * `item_id` - The index of an item already in the tree (0 to `num_items - 1`)
+    /// * `results` - Output vector; will be cleared and populated with matching box indices
+    ///              (excluding the query item itself)
+    ///
+    /// # Errors
+    /// Returns an error if `item_id >= num_items` (the item doesn't exist in the tree).
+    pub fn query_intersecting_id(
+        &self,
+        item_id: usize,
+        results: &mut Vec<usize>,
+    ) -> Result<(), String> {
+        if item_id >= self.num_items {
+            return Err(format!("item_id {} is out of bounds (tree has {} items)", item_id, self.num_items));
+        }
+        
+        // Get the bounding box of the query item
+        let query_box = self.get_box(item_id);
+        
+        // Use the existing query_intersecting method with the box bounds
+        self.query_intersecting(query_box.min_x, query_box.min_y, query_box.max_x, query_box.max_y, results);
+        
+        // Always exclude the query item itself (no self-intersections)
+        results.retain(|&idx| idx != item_id);
+        
+        Ok(())
+    }
+
     /// Finds the first K intersecting boxes within a rectangular region.
     ///
     /// This query finds boxes intersecting a query rectangle and stops after collecting K results.

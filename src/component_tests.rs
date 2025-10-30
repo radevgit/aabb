@@ -82,7 +82,9 @@ mod tests {
         tree.add(10.0, 10.0, 20.0, 20.0);
         tree.build();
         assert_eq!(tree.num_items, 1);
-        assert!(!tree.level_bounds.is_empty(), "Should have level bounds");
+        if tree.level_bounds.is_empty() {
+            panic!("Should have level bounds");
+        }
     }
 
     #[test]
@@ -846,4 +848,148 @@ mod tests {
         tree.query_in_direction_k(15.0, 15.0, 25.0, 25.0, 1.0, 0.0, 0, 30.0, &mut results);
         assert_eq!(results.len(), 0);
     }
+
+    // ============================================================================
+    // QUERY_INTERSECTING_ID TESTS
+    // ============================================================================
+
+    #[test]
+    fn test_query_intersecting_id_basic() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 2.0, 2.0);      // Box 0
+        tree.add(1.0, 1.0, 3.0, 3.0);      // Box 1 - overlaps with 0
+        tree.add(1.5, 1.5, 2.5, 2.5);      // Box 2 - overlaps with 0 and 1
+        tree.add(5.0, 5.0, 6.0, 6.0);      // Box 3 - no overlap
+        tree.build();
+
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(0, &mut results);
+        if res.is_err() {
+            panic!("query_intersecting_id should succeed");
+        }
+        results.sort();
+
+        // Box 0 should intersect with boxes 1 and 2, but not itself
+        if results != vec![1, 2] {
+            panic!("Box 0 query failed: expected [1, 2], got {:?}", results);
+        }
+    }
+
+    #[test]
+    fn test_query_intersecting_id_no_overlaps() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 1.0, 1.0);      // Box 0
+        tree.add(5.0, 5.0, 6.0, 6.0);      // Box 1 - no overlap
+        tree.build();
+
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(0, &mut results);
+        if res.is_err() {
+            panic!("query_intersecting_id should succeed");
+        }
+
+        if !results.is_empty() {
+            panic!("Box 0 query should return empty, got {:?}", results);
+        }
+    }
+
+    #[test]
+    fn test_query_intersecting_id_excludes_self() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.build();
+
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(0, &mut results);
+        if res.is_err() {
+            panic!("query_intersecting_id should succeed");
+        }
+
+        // Should never include the query item itself
+        if results.contains(&0) {
+            panic!("Query should not include self, got {:?}", results);
+        }
+    }
+
+    #[test]
+    fn test_query_intersecting_id_bounds_check() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 1.0, 1.0);
+        tree.build();
+
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(5, &mut results); // Out of bounds
+        if res.is_ok() {
+            panic!("query_intersecting_id should fail with out of bounds error");
+        }
+        if !res.unwrap_err().contains("out of bounds") {
+            panic!("Error message should mention 'out of bounds'");
+        }
+    }
+
+    #[test]
+    fn test_query_intersecting_id_multiple_overlaps() {
+        let mut tree = HilbertRTree::new();
+        tree.add(10.0, 10.0, 20.0, 20.0);  // Box 0
+        tree.add(15.0, 15.0, 25.0, 25.0);  // Box 1 - overlaps with 0
+        tree.add(12.0, 12.0, 18.0, 18.0);  // Box 2 - overlaps with 0 and 1
+        tree.add(11.0, 11.0, 19.0, 19.0);  // Box 3 - overlaps with 0, 1, 2
+        tree.add(50.0, 50.0, 60.0, 60.0);  // Box 4 - no overlap
+        tree.build();
+
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(0, &mut results);
+        if res.is_err() {
+            panic!("query_intersecting_id should succeed");
+        }
+        results.sort();
+
+        // Box 0 should intersect with boxes 1, 2, 3
+        if results != vec![1, 2, 3] {
+            panic!("Box 0 query failed: expected [1, 2, 3], got {:?}", results);
+        }
+    }
+
+    #[test]
+    fn test_query_intersecting_id_different_items() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 2.0, 2.0);      // Box 0
+        tree.add(1.0, 1.0, 3.0, 3.0);      // Box 1 - overlaps with 0
+        tree.add(1.5, 1.5, 2.5, 2.5);      // Box 2 - overlaps with 0 and 1
+        tree.add(5.0, 5.0, 6.0, 6.0);      // Box 3 - no overlap
+        tree.build();
+
+        // Query with box 1
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(1, &mut results);
+        if res.is_err() {
+            panic!("query_intersecting_id should succeed");
+        }
+        results.sort();
+
+        // Box 1 should intersect with boxes 0 and 2, but not itself
+        if results != vec![0, 2] {
+            panic!("Box 1 query failed: expected [0, 2], got {:?}", results);
+        }
+    }
+
+    #[test]
+    fn test_query_intersecting_id_isolated_item() {
+        let mut tree = HilbertRTree::new();
+        tree.add(0.0, 0.0, 1.0, 1.0);      // Box 0
+        tree.add(2.0, 2.0, 3.0, 3.0);      // Box 1
+        tree.add(5.0, 5.0, 6.0, 6.0);      // Box 2
+        tree.build();
+
+        let mut results = Vec::new();
+        let res = tree.query_intersecting_id(2, &mut results);
+        if res.is_err() {
+            panic!("query_intersecting_id should succeed");
+        }
+
+        if !results.is_empty() {
+            panic!("Isolated box query should return empty, got {:?}", results);
+        }
+    }
 }
+
