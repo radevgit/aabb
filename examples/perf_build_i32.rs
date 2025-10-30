@@ -1,18 +1,18 @@
-//! Performance profiling example for tree building
+//! Performance profiling example for i32 tree building
 //! 
-//! This example focuses exclusively on benchmarking the build phase.
+//! This example focuses exclusively on benchmarking the build phase for the i32 variant.
 //! Designed to be used with low-level profilers like `samply`:
 //! 
 //! ```bash
-//! samply record cargo run --release --example perf_build
+//! samply record cargo run --release --example perf_build_i32
 //! ```
 
 use aabb::prelude::*;
 use std::time::Instant;
 
 fn main() {
-    println!("AABB Build Performance Benchmark");
-    println!("=================================\n");
+    println!("AABB Build Performance Benchmark (i32 variant)");
+    println!("==============================================\n");
     
     println!("Generating 1,000,000 random bounding boxes...");
     let mut boxes = Vec::new();
@@ -20,16 +20,16 @@ fn main() {
     
     for _ in 0..1_000_000 {
         rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-        let x1 = ((rng >> 32) as f64 / u32::MAX as f64) * 1000.0;
+        let x1 = ((rng >> 32) as i32) % 1000;
         
         rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-        let y1 = ((rng >> 32) as f64 / u32::MAX as f64) * 1000.0;
+        let y1 = ((rng >> 32) as i32) % 1000;
         
         rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-        let size_x = ((rng >> 32) as f64 / u32::MAX as f64) * 50.0 + 1.0;
+        let size_x = ((rng >> 32) as i32) % 50 + 1;
         
         rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-        let size_y = ((rng >> 32) as f64 / u32::MAX as f64) * 50.0 + 1.0;
+        let size_y = ((rng >> 32) as i32) % 50 + 1;
         
         boxes.push((x1, y1, x1 + size_x, y1 + size_y));
     }
@@ -42,9 +42,9 @@ fn main() {
     
     let overall_start = Instant::now();
     
-    for run in 1..=num_runs {
+    for _run in 1..=num_runs {
         let build_start = Instant::now();
-        let mut tree = AABB::with_capacity(1_000_000);
+        let mut tree = HilbertRTreeI32::with_capacity(1_000_000);
         
         // Add all boxes
         for (x1, y1, x2, y2) in &boxes {
@@ -60,9 +60,9 @@ fn main() {
         let build_phase_duration = build_phase_start.elapsed();
         total_build_time += build_phase_duration;
         
-        // if run % 10 == 0 {
+        // if _run % 10 == 0 {
         //     println!("Run {:3}/{}: Add {:.2}ms, Build {:.2}ms", 
-        //         run, num_runs,
+        //         _run, num_runs,
         //         add_duration.as_secs_f64() * 1000.0,
         //         build_phase_duration.as_secs_f64() * 1000.0
         //     );
@@ -81,32 +81,14 @@ fn main() {
 
 
 /*
-cargo build --release --example perf_build
-./target/release/examples/perf_build
-samply record cargo run --release --example perf_build
+cargo build --release --example perf_build_i32
+./target/release/examples/perf_build_i32
 
-Build Summary (100 runs):
-  Total Add time:   1296.90ms
-  Average Add:      12.97ms
-  Total Build time: 9583.86ms
-  Average Build:    95.84ms
-  Overall time:     10988.86ms
-_________________________________________________
-OPT 6 - avoiding resize of initial data array
-  Total Add time:   1091.36ms
-  Average Add:      10.91ms
-  Total Build time: 9616.03ms
-  Average Build:    96.16ms
-  Overall time:     10827.15ms
-_________________________________________________
-OPT 7 - replacing custom quicksort with sort_unstable_by_key
-Note the Add phase also imrpves 50% somehow (memory layout?)
-  Total Add time:   459.30ms
-  Average Add:      4.59ms
-  Total Build time: 7675.16ms
-  Average Build:    76.75ms
-  Overall time:     8231.33ms
-
-__________________________________________________
-
- */
+Baseline (with introsort sort optimization):
+  Total Add time:   413.49ms
+  Average Add:      4.13ms
+  Total Build time: 6507.64ms
+  Average Build:    65.08ms
+  Overall time:     6989.63ms
+  ______________________________________________
+*/
