@@ -118,8 +118,11 @@ impl HilbertRTree {
         
         // Ensure len is sufficient for writing at the position we need
         let box_idx = HEADER_SIZE + self.num_items * size_of::<Box>();
-        if box_idx + size_of::<Box>() > self.data.len() {
-            self.data.resize(box_idx + size_of::<Box>(), 0);
+        let needed_len = box_idx + size_of::<Box>();
+        if needed_len > self.data.len() {
+            unsafe {
+                self.data.set_len(needed_len);
+            }
         }
         
         let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut Box;
@@ -160,15 +163,18 @@ impl HilbertRTree {
             }
         }
 
-        // Resize data buffer to final size
+        // Ensure data buffer has sufficient capacity and length for all writes
         let data_size = HEADER_SIZE + total_nodes * (size_of::<Box>() + size_of::<u32>());
         if data_size > self.data.capacity() {
             self.data.reserve(data_size - self.data.capacity());
             self.allocated_capacity = self.data.capacity();
         }
-        // Ensure len is sufficient for all writes during build
+        // Set length to required size (uninitialized, but we'll overwrite everything)
+        // This avoids the zero-fill overhead of resize()
         if self.data.len() < data_size {
-            self.data.resize(data_size, 0);
+            unsafe {
+                self.data.set_len(data_size);
+            }
         }
 
         // Write header
@@ -211,14 +217,14 @@ impl HilbertRTree {
         let hilbert_width = MAX_HILBERT as f64 / (self.bounds.max_x - self.bounds.min_x);
         let hilbert_height = MAX_HILBERT as f64 / (self.bounds.max_y - self.bounds.min_y);
 
-        let mut hilbert_values = vec![0_u32; num_items];
+        let mut hilbert_values = Vec::with_capacity(num_items);
         for i in 0..num_items {
             let box_data = self.get_box(i);
             let center_x = ((box_data.min_x + box_data.max_x) / 2.0 - self.bounds.min_x) * hilbert_width;
             let center_y = ((box_data.min_y + box_data.max_y) / 2.0 - self.bounds.min_y) * hilbert_height;
             let hx = center_x.max(0.0).min(MAX_HILBERT as f64 - 1.0) as u32;
             let hy = center_y.max(0.0).min(MAX_HILBERT as f64 - 1.0) as u32;
-            hilbert_values[i] = hilbert_xy_to_index(hx, hy);
+            hilbert_values.push(hilbert_xy_to_index(hx, hy));
         }
 
         // Create an indirection array to track sorting permutations
@@ -229,11 +235,14 @@ impl HilbertRTree {
         sort_indices.sort_unstable_by_key(|&i| hilbert_values[i]);
         
         // Apply the permutation to boxes
-        let mut temp_data = vec![0u8; num_items * size_of::<Box>()];
+        let mut temp_data = Vec::with_capacity(num_items * size_of::<Box>());
+        unsafe {
+            temp_data.set_len(num_items * size_of::<Box>());
+        }
         
         for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
             let old_box_idx = HEADER_SIZE + old_pos * size_of::<Box>();
-            let new_box_idx = new_pos * size_of::<Box>();
+            let new_box_idx = new_pos * size_of::<Box>(); // new_pos from enumerate index
             temp_data[new_box_idx..new_box_idx + size_of::<Box>()]
                 .copy_from_slice(&self.data[old_box_idx..old_box_idx + size_of::<Box>()]);
         }
@@ -247,10 +256,10 @@ impl HilbertRTree {
         }
         
         // Apply the same permutation to hilbert_values array to keep it in sync with boxes
-        let mut temp_hilbert = vec![0_u32; num_items];
-        for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
-            temp_hilbert[new_pos] = hilbert_values[old_pos];
-        }
+        // let mut temp_hilbert = Vec::with_capacity(num_items);
+        // for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
+        //     temp_hilbert.push(hilbert_values[old_pos]);
+        // }
         // Note: We keep temp_hilbert for consistency but don't need it for later operations
         // since the indices array contains the original box IDs
         

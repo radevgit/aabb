@@ -91,4 +91,12 @@ Baseline (with introsort sort optimization):
   Average Build:    65.08ms
   Overall time:     6989.63ms
   ______________________________________________
+OPT 8 - removed unecessary vector initializations (2.3%)
+  Total Add time:   423.22ms
+  Average Add:      4.23ms
+  Total Build time: 6417.60ms
+  Average Build:    64.18ms
+  Overall time:     6895.65ms
+
+
 */

@@ -37,6 +37,11 @@
 //! println!("Found {} intersecting boxes: {:?}", results.len(), results);
 //! // Output: Found 3 intersecting boxes: [0, 1, 3]
 //!
+//! // Query for boxes intersecting with an already-indexed item (no self-intersection)
+//! let _ = tree.query_intersecting_id(0, &mut results);
+//! println!("Boxes intersecting with box 0: {:?}", results);
+//! // Output: Boxes intersecting with box 0: [1, 3]
+//!
 //! // You can reuse the results vector for multiple queries
 //! tree.query_intersecting(4.0, 4.0, 7.0, 7.0, &mut results);
 //! println!("Found {} boxes in distant region: {:?}", results.len(), results);
@@ -81,6 +86,7 @@
 //!
 //! ### Basic Spatial Queries
 //! - [`query_intersecting`] `(f64, i32)` - Find boxes that intersect a rectangle
+//! - [`query_intersecting_id`] `(f64, i32)` - Find boxes that intersect an already-indexed item
 //! - [`query_intersecting_k`] `(f64, i32)` - Find first K intersecting boxes
 //! - [`query_point`] `(f64, i32)` - Find boxes that contain a point
 //! - [`query_contain`] `(f64, i32)` - Find boxes that contain a rectangle  
@@ -95,6 +101,7 @@
 //! - [`query_in_direction_k`] `(f64)` - Find K nearest boxes intersecting a rectangle's movement path
 //!
 //! [`query_intersecting`]: HilbertRTree::query_intersecting
+//! [`query_intersecting_id`]: HilbertRTree::query_intersecting_id
 //! [`query_intersecting_k`]: HilbertRTree::query_intersecting_k
 //! [`query_point`]: HilbertRTree::query_point
 //! [`query_contain`]: HilbertRTree::query_contain

@@ -167,8 +167,11 @@ impl HilbertRTreeI32 {
         
         // Ensure len is sufficient for writing at the position we need
         let box_idx = HEADER_SIZE + self.num_items * size_of::<BoxI32>();
-        if box_idx + size_of::<BoxI32>() > self.data.len() {
-            self.data.resize(box_idx + size_of::<BoxI32>(), 0);
+        let needed_len = box_idx + size_of::<BoxI32>();
+        if needed_len > self.data.len() {
+            unsafe {
+                self.data.set_len(needed_len);
+            }
         }
         
         let box_ptr = &mut self.data[box_idx] as *mut u8 as *mut BoxI32;
@@ -288,14 +291,14 @@ impl HilbertRTreeI32 {
             0.0
         };
 
-        let mut hilbert_values = vec![0_u32; num_items];
+        let mut hilbert_values = Vec::with_capacity(num_items);
         for i in 0..num_items {
             let box_data = self.get_box(i);
             let center_x = ((box_data.min_x as f64 + box_data.max_x as f64) / 2.0 - self.bounds.min_x as f64) * hilbert_width;
             let center_y = ((box_data.min_y as f64 + box_data.max_y as f64) / 2.0 - self.bounds.min_y as f64) * hilbert_height;
             let hx = center_x.max(0.0).min(MAX_HILBERT as f64 - 1.0) as u32;
             let hy = center_y.max(0.0).min(MAX_HILBERT as f64 - 1.0) as u32;
-            hilbert_values[i] = hilbert_xy_to_index(hx, hy);
+            hilbert_values.push(hilbert_xy_to_index(hx, hy));
         }
 
         // Initialize leaf indices BEFORE sorting
@@ -315,7 +318,10 @@ impl HilbertRTreeI32 {
         sort_indices.sort_unstable_by_key(|&i| hilbert_values[i]);
         
         // Apply the permutation to boxes
-        let mut temp_data = vec![0u8; num_items * size_of::<BoxI32>()];
+        let mut temp_data = Vec::with_capacity(num_items * size_of::<BoxI32>());
+        unsafe {
+            temp_data.set_len(num_items * size_of::<BoxI32>());
+        }
         
         for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
             let old_box_idx = HEADER_SIZE + old_pos * size_of::<BoxI32>();
@@ -333,12 +339,13 @@ impl HilbertRTreeI32 {
         }
         
         // Apply the same permutation to hilbert_values array to keep it in sync with boxes
-        let mut temp_hilbert = vec![0_u32; num_items];
-        for (new_pos, &old_pos) in sort_indices.iter().enumerate() {
-            temp_hilbert[new_pos] = hilbert_values[old_pos];
-        }
+        // let mut temp_hilbert = Vec::with_capacity(num_items);
+        // for &old_pos in sort_indices.iter() {
+        //     temp_hilbert.push(hilbert_values[old_pos]);
+        // }
         // Note: We keep temp_hilbert for consistency but don't need it for later operations
         // since the indices array contains the original box IDs
+
         let indices_start = HEADER_SIZE + total_nodes * size_of::<BoxI32>();
         for i in 0..num_items {
             let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
