@@ -161,6 +161,7 @@ fn main() {
 /* 
 cargo bench --bench query_intersecting_bench
 
+
 Building index with 1000000 items...
 Index built in 114.57ms
 

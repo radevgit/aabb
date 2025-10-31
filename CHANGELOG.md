@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.7] - 2025-10-31
+- Small index build performance optimizations
+
 ## [0.6.6] - 2025-10-30
 - Added query_intersecting_id()
 

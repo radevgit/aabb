@@ -91,7 +91,6 @@ Minimal examples for each query method are available in the `examples/` director
 - `query_point` - Find boxes containing a point
 - `query_contain` - Find boxes containing a rectangle
 - `query_contained_within` - Find boxes inside a rectangle
-- `query_nearest` - Find the single nearest box
 - `query_nearest_k` - Find K nearest boxes
 - `query_circle` - Find boxes in a circular region
 - `query_in_direction` - Find boxes in a movement path
