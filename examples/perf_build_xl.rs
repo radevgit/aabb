@@ -100,7 +100,7 @@ fn main() {
 
 /*
 cargo build --release --example perf_build_xl
-./target/release/examples/perf_build
+./target/release/examples/perf_build_xl
 
 Build Summary (10_000_000 boxes, 10 runs):
   Total Add time:   1165.65ms
@@ -122,6 +122,13 @@ Build Summary (200_000_000 boxes, 1 runs):
   Total Build time: 36055.33ms
   Average Build:    36055.33ms
   Overall time:     38390.39ms
-
+_______________________________________________
+OPT 9 
+Build Summary (10_000_000 boxes, 10 runs):
+  Total Add time:   1073.14ms
+  Average Add:      107.31ms
+  Total Build time: 11307.81ms
+  Average Build:    1130.78ms
+  Overall time:     12510.09ms
 
 */
