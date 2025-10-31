@@ -97,6 +97,14 @@ OPT 8 - removed unecessary vector initializations (2.3%)
   Total Build time: 6417.60ms
   Average Build:    64.18ms
   Overall time:     6895.65ms
+________________________________________________
+OPT 9 - Calculate exact total nodes needed
+Build Summary (100 runs):
+  Total Add time:   271.15ms
+  Average Add:      2.71ms
+  Total Build time: 6414.16ms
+  Average Build:    64.14ms
+  Overall time:     6755.35ms
 
 
 */

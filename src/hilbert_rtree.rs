@@ -68,6 +68,24 @@ fn estimate_total_nodes(num_items: usize, node_size: usize) -> usize {
     (num_items * node_size) / (node_size - 1) + 1
 }
 
+/// Helper: Calculate EXACT total nodes by simulating tree construction (O(log n) - tree depth)
+#[inline]
+fn calculate_exact_total_nodes(num_items: usize, node_size: usize) -> usize {
+    if num_items == 0 {
+        return 0;
+    }
+    let mut total_nodes = num_items;
+    let mut count = num_items;
+    loop {
+        count = count.div_ceil(node_size);
+        total_nodes += count;
+        if count <= 1 {
+            break;
+        }
+    }
+    total_nodes
+}
+
 /// Helper: Calculate required buffer size for estimated nodes
 #[inline]
 fn estimate_buffer_size(num_items: usize, node_size: usize) -> usize {
@@ -147,33 +165,37 @@ impl HilbertRTree {
         let num_items = self.num_items;
         let node_size = self.node_size;
 
-        // Calculate total nodes and level bounds
-        let mut level_bounds = Vec::with_capacity(16); // Max tree depth ~16 for 1M items
-        let mut count = num_items;
-        let mut total_nodes = num_items;
-        level_bounds.push(total_nodes);
-
-        // Create parent levels until we have a single root
-        loop {
-            count = count.div_ceil(node_size);
-            total_nodes += count;
-            level_bounds.push(total_nodes);
-            if count <= 1 {
-                break;
-            }
-        }
-
-        // Ensure data buffer has sufficient capacity and length for all writes
+        // Calculate exact total nodes needed (O(log n) - only tree depth iterations)
+        let total_nodes = calculate_exact_total_nodes(num_items, node_size);
         let data_size = HEADER_SIZE + total_nodes * (size_of::<Box>() + size_of::<u32>());
+        
+        // Reserve all needed space at once (avoids reallocation during build)
         if data_size > self.data.capacity() {
             self.data.reserve(data_size - self.data.capacity());
             self.allocated_capacity = self.data.capacity();
         }
-        // Set length to required size (uninitialized, but we'll overwrite everything)
-        // This avoids the zero-fill overhead of resize()
+        
+        // CRITICAL: Must zero-fill parent node memory. The build process writes parent nodes
+        // incrementally in the loop below, and during tree traversal we may read indices/boxes
+        // from parent positions before they're written. Zero values act as sentinels.
+        // This is unavoidable without additional bookkeeping to track which positions are initialized.
         if self.data.len() < data_size {
-            unsafe {
-                self.data.set_len(data_size);
+            self.data.resize(data_size, 0);
+        }
+
+        // Calculate level bounds
+        let mut level_bounds = Vec::with_capacity(16); // Max tree depth ~16 for 1M items
+        let mut count = num_items;
+        let mut level_total_nodes = num_items;
+        level_bounds.push(level_total_nodes);
+
+        // Create parent levels until we have a single root
+        loop {
+            count = count.div_ceil(node_size);
+            level_total_nodes += count;
+            level_bounds.push(level_total_nodes);
+            if count <= 1 {
+                break;
             }
         }
 
