@@ -155,7 +155,8 @@ fn main() {
     println!();
 }
 
-/* cargo bench  --bench query_intersecting_bench_i32
+/* 
+cargo bench  --bench query_intersecting_bench_i32
 
 Building index with 1000000 items...
 Index built in 89.38ms
@@ -166,8 +167,17 @@ Running query benchmarks:
 1000 searches 1%: 9ms
 1000 searches 0.01%: 0ms
 ______________________________________________
+Opt 9
+Index built in 61.03ms
 
-After some optimizations:
+Running query benchmarks:
+-----------------------
+1000 searches 100%: 1401ms
+1000 searches 50%: 199ms
+1000 searches 10%: 43ms
+1000 searches 1%: 7ms
+1000 searches 0.01%: 0ms
+______________________________________________
 
 
 */

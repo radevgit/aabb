@@ -158,7 +158,8 @@ fn main() {
     println!();
 }
 
-/* cargo bench  --bench query_intersecting_bench
+/* 
+cargo bench --bench query_intersecting_bench
 
 Building index with 1000000 items...
 Index built in 114.57ms
@@ -192,5 +193,21 @@ Running neighbor benchmarks:
 1 searches of 1000000 neighbors: 112ms
 100000 searches of 1 neighbors: 567ms
 _________________________________________
+Opt 9
+Index built in 89.83ms
 
+Running query benchmarks:
+-----------------------
+1000 searches 100%: 2182ms
+1000 searches 50%: 388ms
+1000 searches 10%: 89ms
+1000 searches 1%: 16ms
+1000 searches 0.01%: 2ms
+
+Running neighbor benchmarks:
+-----------------------
+1000 searches of 100 neighbors: 14ms
+1 searches of 1000000 neighbors: 107ms
+100000 searches of 1 neighbors: 564ms
+_________________________________________
 */

@@ -110,5 +110,11 @@ Profile Summary (i32 variant):
   Querying: 6082.92ms
   Total:    6153.36ms
 ______________________________________________________________
+Opt 9
+Profile Summary (i32 variant):
+  Building: 67.40ms
+  Querying: 6092.90ms
+  Total:    6160.30ms
+______________________________________________________________
 
 */
