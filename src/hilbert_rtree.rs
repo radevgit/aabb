@@ -51,6 +51,10 @@ pub struct HilbertRTree {
     total_nodes: usize,
     /// Pre-allocated capacity in bytes (0 if not pre-allocated)
     allocated_capacity: usize,
+    /// Inverse mapping: original item ID -> position in sorted tree
+    /// After build(), sorted_order[original_id] = position in memory
+    /// This allows get(item_id) to find the correct box despite Hilbert sorting
+    pub(crate) sorted_order: Vec<usize>,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
@@ -119,6 +123,7 @@ impl HilbertRTree {
             position: 0,
             bounds: Box::new(f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
             total_nodes: 0,
+            sorted_order: Vec::new(),
         }
     }
 
@@ -181,7 +186,31 @@ impl HilbertRTree {
     /// // Results contain points 0 and 1 within distance 1.5
     /// ```
     pub fn add_point(&mut self, x: f64, y: f64) {
-        self.add(x, x, y, y);
+        self.add(x, y, x, y);
+    }
+
+    /// Retrieves a point that was added with `add_point()`.
+    ///
+    /// This is a convenience method for retrieving point data. Returns `Some((x, y))` if the
+    /// point exists, or `None` if the index is out of bounds.
+    ///
+    /// # Arguments
+    /// * `item_id` - The index of the point (0-based, in order added)
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add_point(1.5, 2.5);
+    /// tree.add_point(3.0, 4.0);
+    /// tree.build();
+    ///
+    /// assert_eq!(tree.get_point(0), Some((1.5, 2.5)));
+    /// assert_eq!(tree.get_point(1), Some((3.0, 4.0)));
+    /// assert_eq!(tree.get_point(2), None);
+    /// ```
+    pub fn get_point(&self, item_id: usize) -> Option<(f64, f64)> {
+        self.get(item_id).map(|(min_x, min_y, _max_x, _max_y)| (min_x, min_y))
     }
 
     /// Builds the Hilbert R-tree index
@@ -260,6 +289,9 @@ impl HilbertRTree {
             unsafe {
                 std::ptr::write_unaligned(root_idx_ptr, 0_u32 << 2_u32); // First child at position 0
             }
+            
+            // For single-node case, no sorting happens, so sorted_order is identity mapping
+            self.sorted_order = (0..num_items).collect();
             return;
         }
 
@@ -315,6 +347,16 @@ impl HilbertRTree {
         
         // Initialize leaf indices AFTER sorting - map new position to original box ID
         let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
+        
+        // Build inverse mapping: original_id -> sorted_position
+        // This allows get(item_id) to find the correct box despite Hilbert sorting
+        let mut sorted_order = vec![0usize; num_items];
+        for sorted_pos in 0..num_items {
+            let original_id = sort_indices[sorted_pos];
+            sorted_order[original_id] = sorted_pos;
+        }
+        self.sorted_order = sorted_order;
+        
         for i in 0..num_items {
             let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
@@ -1739,7 +1781,16 @@ impl HilbertRTree {
             return None;
         }
         
-        let box_data = self.get_box(item_id);
+        // After build(), boxes are sorted by Hilbert curve order
+        // sorted_order[item_id] gives us the position of this item in the sorted tree
+        let pos = if self.sorted_order.is_empty() {
+            // If tree hasn't been built yet, items are in original order
+            item_id
+        } else {
+            self.sorted_order[item_id]
+        };
+        
+        let box_data = self.get_box(pos);
         Some((box_data.min_x, box_data.min_y, box_data.max_x, box_data.max_y))
     }
 
@@ -1948,6 +1999,7 @@ impl HilbertRTree {
             bounds,
             total_nodes,
             allocated_capacity: data_len,
+            sorted_order: Vec::new(),
         })
     }
 }

@@ -322,4 +322,127 @@ mod test_point_optimizations {
         assert!(results[0] != 999);
         assert!(results[1] != 888);
     }
+
+    /// Test get_point() convenience method
+    #[test]
+    fn test_get_point_method() {
+        let mut tree = AABB::with_capacity(4);
+        tree.add_point(0.0, 0.0);
+        tree.add_point(1.5, 2.5);
+        tree.add_point(3.0, 4.0);
+        tree.add_point(-1.0, -1.0);
+        tree.build();
+
+        // Verify get_point returns correct coordinates
+        assert_eq!(tree.get_point(0), Some((0.0, 0.0)));
+        assert_eq!(tree.get_point(1), Some((1.5, 2.5)));
+        assert_eq!(tree.get_point(2), Some((3.0, 4.0)));
+        assert_eq!(tree.get_point(3), Some((-1.0, -1.0)));
+        
+        // Out of bounds should return None
+        assert_eq!(tree.get_point(4), None);
+    }
+
+    /// Test that get_point works before build
+    #[test]
+    fn test_get_point_before_build() {
+        let mut tree = AABB::with_capacity(2);
+        tree.add_point(1.0, 2.0);
+        tree.add_point(3.0, 4.0);
+        
+        // Should work even before build()
+        assert_eq!(tree.get_point(0), Some((1.0, 2.0)));
+        assert_eq!(tree.get_point(1), Some((3.0, 4.0)));
+    }
+
+    /// Test query with very small radius (1e-9) - critical for exact point matching
+    #[test]
+    fn test_query_circle_points_very_small_radius() {
+        let mut tree = AABB::with_capacity(5);
+        tree.add_point(0.0, 0.0);
+        tree.add_point(1.0, 0.0);
+        tree.add_point(0.0, 1.0);
+        tree.add_point(1.0, 1.0);
+        tree.add_point(0.5, 0.5);
+        tree.build();
+
+        // Query with radius 1e-9 should only return exact point
+        let mut results = Vec::new();
+        tree.query_circle_points(0.0, 0.0, 1e-9, &mut results);
+        assert_eq!(results, vec![0], "Query with radius 1e-9 should only return exact point");
+        
+        // Query with radius 1e-6 should still only return exact point
+        tree.query_circle_points(0.0, 0.0, 1e-6, &mut results);
+        assert_eq!(results, vec![0], "Query with radius 1e-6 should only return exact point");
+    }
+
+    /// Test point storage correctness after build with Hilbert sorting
+    #[test]
+    fn test_point_storage_after_build() {
+        let mut tree = AABB::with_capacity(5);
+        
+        // Add points in specific order
+        tree.add_point(0.0, 0.0);
+        tree.add_point(1.0, 0.0);
+        tree.add_point(0.0, 1.0);
+        tree.add_point(1.0, 1.0);
+        tree.add_point(0.5, 0.5);
+        
+        tree.build();
+        
+        // Verify all points are stored correctly
+        assert_eq!(tree.get_point(0), Some((0.0, 0.0)));
+        assert_eq!(tree.get_point(1), Some((1.0, 0.0)));
+        assert_eq!(tree.get_point(2), Some((0.0, 1.0)));
+        assert_eq!(tree.get_point(3), Some((1.0, 1.0)));
+        assert_eq!(tree.get_point(4), Some((0.5, 0.5)));
+    }
+
+    /// Test that add_point stores correct coordinates (not swapped)
+    #[test]
+    fn test_add_point_coordinate_order() {
+        let mut tree = AABB::with_capacity(3);
+        
+        tree.add_point(1.5, 2.5);
+        tree.add_point(3.0, 4.0);
+        tree.add_point(-1.0, -2.0);
+        
+        tree.build();
+        
+        // Verify X and Y are not swapped
+        assert_eq!(tree.get_point(0), Some((1.5, 2.5)));
+        assert_eq!(tree.get_point(1), Some((3.0, 4.0)));
+        assert_eq!(tree.get_point(2), Some((-1.0, -2.0)));
+        
+        // Verify via get() as well
+        assert_eq!(tree.get(0).unwrap(), (1.5, 2.5, 1.5, 2.5));
+        assert_eq!(tree.get(1).unwrap(), (3.0, 4.0, 3.0, 4.0));
+        assert_eq!(tree.get(2).unwrap(), (-1.0, -2.0, -1.0, -2.0));
+    }
+
+    /// Test consistency between query_circle_points and get_point
+    #[test]
+    fn test_query_circle_points_consistency_with_get_point() {
+        let mut tree = AABB::with_capacity(10);
+        
+        // Create grid of points
+        for i in 0..3 {
+            for j in 0..3 {
+                tree.add_point(i as f64, j as f64);
+            }
+        }
+        tree.build();
+
+        // Query for points near (1.0, 1.0) with radius 1.5
+        let mut results = Vec::new();
+        tree.query_circle_points(1.0, 1.0, 1.5, &mut results);
+        
+        // For each result, verify get_point returns the correct coordinates
+        for &idx in &results {
+            if let Some((x, y)) = tree.get_point(idx) {
+                let distance = ((x - 1.0).powi(2) + (y - 1.0).powi(2)).sqrt();
+                assert!(distance <= 1.5, "Point {} at ({}, {}) has distance {}, exceeds radius 1.5", idx, x, y, distance);
+            }
+        }
+    }
 }

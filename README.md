@@ -92,9 +92,10 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 - `HilbertRTreeI32::new()` or `AABBI32::new()` - Create a new empty tree
 - `HilbertRTreeI32::with_capacity(capacity)` or `AABBI32::with_capacity(capacity)` - Create a new tree with preallocated capacity
 - `add(min_x, min_y, max_x, max_y)` - `(f64, i32)` Add a bounding box
-- `add_point(x, y)` - `(f64)` Add a point (convenience method - internally stores as (x, x, y, y))
+- `add_point(x, y)` - `(f64)` Add a point (convenience method - internally stores as (x, y, x, y))
 - `build()` - `(f64, i32)` Build the spatial index (required before querying)
 - `get(item_id)` - `(f64, i32)` Retrieve the bounding box for an item by its ID
+- `get_point(item_id)` - `(f64)` Retrieve a point as (x, y) for items added with `add_point()`
 - `save(path)` - `(f64, i32)` Save the built tree to a file for fast loading later
 - `load(path)` - `(f64, i32)` Load a previously saved tree from a file
 

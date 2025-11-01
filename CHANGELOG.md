@@ -1,5 +1,10 @@
 # Changelog
 
+
+## [0.6.10] - 2025-11-01
+- Fixed bug query_circle_points() and query_nearest_k_points() for very small r
+- Added get_point() 
+
 ## [0.6.9] - 2025-11-01
 - New queries query_circle_points() and query_nearest_k_points() add_point() 
 
