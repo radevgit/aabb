@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.9] - 2025-11-01
+- New queries query_circle_points() and query_nearest_k_points() add_point() 
+
 ## [0.6.8] - 2025-11-01
 - Added get(id) method to retreive the original bbox
 

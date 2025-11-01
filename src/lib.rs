@@ -143,6 +143,9 @@ pub mod component_tests_i32;
 /// Legacy query tests
 #[doc(hidden)]
 pub mod test_legacy_query;
+/// Point-specific optimization tests
+#[doc(hidden)]
+pub mod test_point_optimizations;
 /// Prelude for convenient imports
 pub mod prelude;
 

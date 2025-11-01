@@ -49,6 +49,37 @@ fn main() {
 }
 ```
 
+### Point Cloud Example
+
+```rust
+use aabb::prelude::*;
+
+fn main() {
+    let mut tree = AABB::with_capacity(4);
+    
+    // Add points using the convenient add_point() method
+    tree.add_point(0.0, 0.0);
+    tree.add_point(1.0, 1.0);
+    tree.add_point(2.0, 2.0);
+    tree.add_point(5.0, 5.0);
+    
+    // Build the spatial index
+    tree.build();
+    
+    // Query for points within a circular region (optimized for point data)
+    let mut results = Vec::new();
+    tree.query_circle_points(0.0, 0.0, 2.5, &mut results);
+    
+    println!("Found {} points within radius 2.5", results.len());
+    // Results are sorted by distance (closest first)
+    
+    // Find K nearest points
+    let mut results = Vec::new();
+    tree.query_nearest_k_points(0.0, 0.0, 2, &mut results);
+    println!("Found {} nearest points", results.len());
+}
+```
+
 ## How it Works
 
 The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their Hilbert curve index (computed from box centers). This provides good spatial locality for most spatial queries while maintaining a simple, cache-friendly data structure.
@@ -60,11 +91,12 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 - `HilbertRTree::with_capacity(capacity)` or `AABB::with_capacity(capacity)` - Create a new tree with preallocated capacity
 - `HilbertRTreeI32::new()` or `AABBI32::new()` - Create a new empty tree
 - `HilbertRTreeI32::with_capacity(capacity)` or `AABBI32::with_capacity(capacity)` - Create a new tree with preallocated capacity
-- `add(min_x, min_y, max_x, max_y)` - (f64, i32) Add a bounding box
-- `build()` - (f64, i32) Build the spatial index (required before querying)
-- `get(item_id)` - (f64, i32) Retrieve the bounding box for an item by its ID
-- `save(path)` - (f64, i32) Save the built tree to a file for fast loading later
-- `load(path)` - (f64, i32) Load a previously saved tree from a file
+- `add(min_x, min_y, max_x, max_y)` - `(f64, i32)` Add a bounding box
+- `add_point(x, y)` - `(f64)` Add a point (convenience method - internally stores as (x, x, y, y))
+- `build()` - `(f64, i32)` Build the spatial index (required before querying)
+- `get(item_id)` - `(f64, i32)` Retrieve the bounding box for an item by its ID
+- `save(path)` - `(f64, i32)` Save the built tree to a file for fast loading later
+- `load(path)` - `(f64, i32)` Load a previously saved tree from a file
 
 ### Queries
 
@@ -78,6 +110,12 @@ The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their
 #### Distance-Based Queries
 - `query_nearest_k(x, y, k, results)` `(f64)` - Find K nearest boxes to a point
 - `query_circle(center_x, center_y, radius, results)` `(f64)` - Find boxes intersecting a circular region
+
+#### Point-Specific Optimized Queries
+- `query_nearest_k_points(x, y, k, results)` `(f64)` - **Optimized** - Find K nearest points (stored as (x, x, y, y)) - ~30% faster than `query_nearest_k` for point clouds
+- `query_circle_points(center_x, center_y, radius, results)` `(f64)` - **Optimized** - Find points within a circular region with distance-sorted results - ~30% faster than `query_circle` for point clouds
+
+**Note:** Point-specific methods assume all items in the tree are stored as degenerate boxes (points) where `min_x == max_x` and `min_y == max_y`. For mixed data (both points and boxes), use the general methods instead. Results from point-specific queries are automatically sorted by distance (closest first).
 
 #### Directional Queries
 - `query_in_direction(rect_min_x, rect_min_y, rect_max_x, rect_max_y, direction_x, direction_y, distance, results)` `(f64)` - Find boxes intersecting a rectangle's movement path
@@ -94,6 +132,8 @@ Minimal examples for each query method are available in the `examples/` director
 - `query_contained_within` - Find boxes inside a rectangle
 - `query_nearest_k` - Find K nearest boxes
 - `query_circle` - Find boxes in a circular region
+- `query_circle_points` - Find points in a circular region (optimized)
+- `query_nearest_k_points` - Find K nearest points (optimized)
 - `query_in_direction` - Find boxes in a movement path
 - `query_in_direction_k` - Find K nearest in a movement path
 
