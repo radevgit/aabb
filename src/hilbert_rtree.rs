@@ -1335,6 +1335,38 @@ impl HilbertRTree {
         }
     }
 
+    /// Retrieves the bounding box for an item by its ID.
+    ///
+    /// Returns the axis-aligned bounding box (min_x, min_y, max_x, max_y) for the item
+    /// at the given ID. This allows users to retrieve stored bounding boxes without
+    /// needing to store them separately.
+    ///
+    /// # Arguments
+    /// * `item_id` - The ID of the item (0 to `num_items - 1`)
+    ///
+    /// # Returns
+    /// `Some((min_x, min_y, max_x, max_y))` if the item exists, `None` if the ID is out of bounds.
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add(0.0, 0.0, 2.0, 2.0);  // Item 0
+    /// tree.add(1.0, 1.0, 3.0, 3.0);  // Item 1
+    /// tree.build();
+    ///
+    /// let bbox = tree.get(0).unwrap();
+    /// assert_eq!(bbox, (0.0, 0.0, 2.0, 2.0));
+    /// ```
+    pub fn get(&self, item_id: usize) -> Option<(f64, f64, f64, f64)> {
+        if item_id >= self.num_items {
+            return None;
+        }
+        
+        let box_data = self.get_box(item_id);
+        Some((box_data.min_x, box_data.min_y, box_data.max_x, box_data.max_y))
+    }
+
     /// Get box at position using read_unaligned
     #[inline(always)]
     pub(crate) fn get_box(&self, pos: usize) -> Box {

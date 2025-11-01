@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.8] - 2025-11-01
+- Added get(id) method to retreive the original bbox
+
 ## [0.6.7] - 2025-10-31
 - Small index build performance optimizations
 
