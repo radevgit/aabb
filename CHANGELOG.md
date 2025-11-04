@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.6.11] - 2025-11-04
+- small fixes related to performance
 
 ## [0.6.10] - 2025-11-01
 - Fixed bug query_circle_points() and query_nearest_k_points() for very small r
