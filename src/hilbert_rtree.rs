@@ -457,7 +457,13 @@ impl HilbertRTree {
             return None;
         }
 
-        // Search through leaf nodes to find which position has this item_id
+        // If tree hasn't been built yet, items are in insertion order
+        if self.level_bounds.is_empty() {
+            let bbox = self.get_box(item_id);
+            return Some((bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y));
+        }
+
+        // After build(): search through leaf nodes to find which position has this item_id
         for pos in 0..self.num_items {
             if self.get_index(pos) as usize == item_id {
                 let bbox = self.get_box(pos);
