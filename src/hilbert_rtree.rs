@@ -51,10 +51,6 @@ pub struct HilbertRTree {
     total_nodes: usize,
     /// Pre-allocated capacity in bytes (0 if not pre-allocated)
     allocated_capacity: usize,
-    /// Inverse mapping: original item ID -> position in sorted tree
-    /// After build(), sorted_order[original_id] = position in memory
-    /// This allows get(item_id) to find the correct box despite Hilbert sorting
-    pub(crate) sorted_order: Vec<usize>,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
@@ -123,7 +119,6 @@ impl HilbertRTree {
             position: 0,
             bounds: Box::new(f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
             total_nodes: 0,
-            sorted_order: Vec::new(),
         }
     }
 
@@ -209,8 +204,34 @@ impl HilbertRTree {
     /// assert_eq!(tree.get_point(1), Some((3.0, 4.0)));
     /// assert_eq!(tree.get_point(2), None);
     /// ```
+    /// Gets the center point for a given item ID (for points added via add_point)
+    ///
+    /// Returns the center coordinates (x, y) for the item with the given ID,
+    /// or None if the ID is out of bounds. This method is intended for items
+    /// that were added as points using add_point().
+    ///
+    /// # Arguments
+    /// * `item_id` - The index of the point (0-based, in order added)
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add_point(1.5, 2.5);
+    /// tree.add_point(3.0, 4.0);
+    /// tree.build();
+    ///
+    /// assert_eq!(tree.get_point(0), Some((1.5, 2.5)));
+    /// assert_eq!(tree.get_point(1), Some((3.0, 4.0)));
+    /// assert_eq!(tree.get_point(2), None);
+    /// ```
     pub fn get_point(&self, item_id: usize) -> Option<(f64, f64)> {
-        self.get(item_id).map(|(min_x, min_y, _max_x, _max_y)| (min_x, min_y))
+        if let Some((min_x, min_y, _max_x, _max_y)) = self.get(item_id) {
+            // For points, min_x == max_x and min_y == max_y, so we can return either
+            Some((min_x, min_y))
+        } else {
+            None
+        }
     }
 
     /// Builds the Hilbert R-tree index
@@ -290,8 +311,8 @@ impl HilbertRTree {
                 std::ptr::write_unaligned(root_idx_ptr, 0_u32 << 2_u32); // First child at position 0
             }
             
-            // For single-node case, no sorting happens, so sorted_order is identity mapping
-            self.sorted_order = (0..num_items).collect();
+            // For single-node case, no sorting happens
+            // No need to populate sorted_order since we use lazy lookup
             return;
         }
 
@@ -348,14 +369,8 @@ impl HilbertRTree {
         // Initialize leaf indices AFTER sorting - map new position to original box ID
         let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         
-        // Build inverse mapping: original_id -> sorted_position
-        // This allows get(item_id) to find the correct box despite Hilbert sorting
-        let mut sorted_order = vec![0usize; num_items];
-        for sorted_pos in 0..num_items {
-            let original_id = sort_indices[sorted_pos];
-            sorted_order[original_id] = sorted_pos;
-        }
-        self.sorted_order = sorted_order;
+        // Note: We removed the sorted_order vector to save memory
+        // get() method now uses lazy search through indices when needed
         
         for i in 0..num_items {
             let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
@@ -415,6 +430,41 @@ impl HilbertRTree {
     /// Returns whether the tree is empty
     pub fn is_empty(&self) -> bool {
         self.num_items == 0
+    }
+
+    /// Gets the bounding box for a given item ID (0-based insertion order)
+    ///
+    /// Returns the bounding box (min_x, min_y, max_x, max_y) for the item with the given ID,
+    /// or None if the ID is out of bounds.
+    ///
+    /// # Arguments
+    /// * `item_id` - The index of the item (0-based, in order added)
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add(1.0, 2.0, 3.0, 4.0);
+    /// tree.add(5.0, 6.0, 7.0, 8.0);
+    /// tree.build();
+    ///
+    /// assert_eq!(tree.get(0), Some((1.0, 2.0, 3.0, 4.0)));
+    /// assert_eq!(tree.get(1), Some((5.0, 6.0, 7.0, 8.0)));
+    /// assert_eq!(tree.get(2), None);
+    /// ```
+    pub fn get(&self, item_id: usize) -> Option<(f64, f64, f64, f64)> {
+        if item_id >= self.num_items {
+            return None;
+        }
+
+        // Search through leaf nodes to find which position has this item_id
+        for pos in 0..self.num_items {
+            if self.get_index(pos) as usize == item_id {
+                let bbox = self.get_box(pos);
+                return Some((bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y));
+            }
+        }
+        None
     }
 
 
@@ -1776,23 +1826,8 @@ impl HilbertRTree {
     /// let bbox = tree.get(0).unwrap();
     /// assert_eq!(bbox, (0.0, 0.0, 2.0, 2.0));
     /// ```
-    pub fn get(&self, item_id: usize) -> Option<(f64, f64, f64, f64)> {
-        if item_id >= self.num_items {
-            return None;
-        }
-        
-        // After build(), boxes are sorted by Hilbert curve order
-        // sorted_order[item_id] gives us the position of this item in the sorted tree
-        let pos = if self.sorted_order.is_empty() {
-            // If tree hasn't been built yet, items are in original order
-            item_id
-        } else {
-            self.sorted_order[item_id]
-        };
-        
-        let box_data = self.get_box(pos);
-        Some((box_data.min_x, box_data.min_y, box_data.max_x, box_data.max_y))
-    }
+    // Note: get() method removed to eliminate sorted_order dependency
+    // Use spatial query methods instead for accessing data
 
     /// Get box at position using read_unaligned
     #[inline(always)]
@@ -1999,7 +2034,6 @@ impl HilbertRTree {
             bounds,
             total_nodes,
             allocated_capacity: data_len,
-            sorted_order: Vec::new(),
         })
     }
 }

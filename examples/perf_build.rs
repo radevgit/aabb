@@ -121,5 +121,12 @@ OPT 9 - Calculate exact total nodes needed
   Total Build time: 7442.48ms
   Average Build:    74.42ms
   Overall time:     7965.43ms
-
+___________________________________________________
+Removed sorted_order
+  Total Add time:   390.01ms
+  Average Add:      3.90ms
+  Total Build time: 7471.13ms
+  Average Build:    74.71ms
+  Overall time:     7986.26ms
+___________________________________________________
  */
