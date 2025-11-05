@@ -1,11 +1,11 @@
 [package]
 
 name = "aabb"
-version = "0.6.11"
+version = "0.6.12"
 description = "Static AABB spatial index for 2D queries"
 rust-version = "1.88"
 edition = "2024"
-categories = ["science::geo", "data-structures", "mathematics", "algorithms"]
+categories = ["science::geo", "data-structures", "game-development", "graphics"]
 keywords = ["spatial-index", "spatial", "aabb", "nearest-neighbor", "rtree"]
 license = "MIT"
 homepage = "https://github.com/radevgit/aabb"
