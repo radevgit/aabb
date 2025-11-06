@@ -47,7 +47,7 @@ fn main() {
     
     // Perform 100,000 intensive queries for profiling
     // Each query covers approximately 10% of the space
-    for i in 0..100_000 {
+    for _i in 0..100_000 {
         rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
         let center_x = ((rng >> 32) as f64 / u32::MAX as f64) * 1000.0;
         

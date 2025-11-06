@@ -42,7 +42,7 @@ fn main() {
     
     let overall_start = Instant::now();
     
-    for run in 1..=num_runs {
+    for _run in 1..=num_runs {
         let build_start = Instant::now();
         let mut tree = AABB::with_capacity(1_000_000);
         

@@ -61,7 +61,7 @@ fn main() {
     
     let overall_start = Instant::now();
     
-    for run in 1..=NUM_RUNS {
+    for _run in 1..=NUM_RUNS {
         let build_start = Instant::now();
         let mut tree = AABB::with_capacity(NUM_BOXES);
         
