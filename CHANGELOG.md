@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.12] - 2025-11-05
+- Fix categories and keywords
+
 ## [0.6.11] - 2025-11-04
 - small fixes related to performance
 
