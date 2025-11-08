@@ -190,4 +190,4 @@ query_nearest_k(f64)
 
 ## Related Projects
 
-NFP is part of the open-sourced [Nest2D](https://nest2d.com) projects collection.
+AABB is part of the open-sourced [Nest2D](https://nest2d.com) projects collection.
