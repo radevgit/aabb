@@ -84,6 +84,15 @@ fn main() {
 
 The Hilbert R-tree stores bounding boxes in a flat array and sorts them by their Hilbert curve index (computed from box centers). This provides good spatial locality for most spatial queries while maintaining a simple, cache-friendly data structure.
 
+### Hilbert Curve Spatial Ordering
+
+The Hilbert space-filling curve is a continuous fractal curve that visits every cell in a 2D grid exactly once, maintaining proximity in space:
+
+![Hilbert Curve](docs/hilbert_curve.png)
+
+The curve preserves spatial locality - points close to each other in 2D space tend to be close along the Hilbert curve order. This property makes the flat array layout extremely cache-friendly for spatial queries.
+
+
 ## API Reference
 
 ### Construction
