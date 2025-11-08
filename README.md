@@ -188,6 +188,6 @@ query_nearest_k(f64)
 ```
 
 
-## License
+## Related Projects
 
-This project is licensed under the MIT License.
+NFP is part of the open-sourced [Nest2D](https://nest2d.com) projects collection.
