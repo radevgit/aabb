@@ -58,7 +58,7 @@ fn main() {
     // Level 3: order 3 (8x8 grid)
     // Level 4: order 4 (16x16 grid)
     // Level 5: order 5 (32x32 grid)
-    let order = 5u32; // Change this parameter for different levels
+    let order = 4u32; // Change this parameter for different levels
     
     let n = 2u32.pow(order) as f64;
     let cell_width = grid_width / n;
@@ -85,7 +85,7 @@ fn main() {
     svg.push_str("  <defs>\n");
     svg.push_str("    <style>\n");
     svg.push_str("      .grid-line { stroke: #CCCCCC; stroke-width: 1; }\n");
-    svg.push_str("      .hilbert-curve { fill: none; stroke: #FF6B35; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }\n");
+    svg.push_str("      .hilbert-curve { fill: none; stroke: #FF6B35; stroke-width: 3.0; stroke-linecap: round; stroke-linejoin: round; }\n");
     svg.push_str("      .grid-box { fill: none; stroke: #333333; stroke-width: 2; }\n");
     svg.push_str("    </style>\n");
     svg.push_str("  </defs>\n\n");
