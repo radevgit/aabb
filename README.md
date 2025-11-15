@@ -111,6 +111,7 @@ The curve preserves spatial locality - points close to each other in 2D space te
 
 #### Basic Spatial Queries
 - `query_intersecting(min_x, min_y, max_x, max_y, results)` `(f64, i32)` - Find boxes that intersect a rectangle
+- `query_intersecting_id(item_id, results)` `(f64, i32)` - Find boxes that intersect with a specific item already in the tree (by ID), excluding the item itself
 - `query_intersecting_k(min_x, min_y, max_x, max_y, k, results)` `(f64, i32)` - Find first K intersecting boxes
 - `query_point(x, y, results)` `(f64, i32)` - Find boxes that contain a point
 - `query_contain(min_x, min_y, max_x, max_y, results)` `(f64, i32)` - Find boxes that contain a rectangle
@@ -135,6 +136,7 @@ The curve preserves spatial locality - points close to each other in 2D space te
 Minimal examples for each query method are available in the `examples/` directory:
 
 - `query_intersecting` - Find boxes intersecting a rectangle
+- `query_intersecting_id` - Find boxes intersecting a specific item already in the tree (by ID)
 - `query_intersecting_k` - Find K first intersecting boxes
 - `query_point` - Find boxes containing a point
 - `query_contain` - Find boxes containing a rectangle
@@ -162,36 +164,55 @@ Environment:
 - Processor: Intel Core i5-1240P
 - Kernel: Linux 6.8.0-86-generic 
 - CPU Frequency: ~1773-3500 MHz
-> cargo bench --bench query_intersecting_bench
-> cargo bench --bench query_intersecting_bench_i32
+> cargo bench --bench profile_bench
+> cargo bench --bench profile_bench_i32
 
-Building index with 1000000 items...
-Index built in 89.28ms (f64)
-Index built in 63.64ms (i32)
+Box Tree Queries (f64)
+================
+build box tree 1000000 items:        76.65ms
+query_intersecting (100% coverage) - 1000 queries:     2390.735µs/query
+query_intersecting (50% coverage)  - 1000 queries:      436.450µs/query
+query_intersecting (10% coverage)  - 1000 queries:       98.460µs/query
+query_intersecting (1% coverage)   - 1000 queries:       17.832µs/query
+query_intersecting (0.01% coverage)- 1000 queries:        2.668µs/query
+query_nearest_k (1000 searches of 100 neighbors):        13.868µs/query
+query_nearest_k (1 search of 1000000 neighbors):        110.456ms/query
+query_nearest_k (100000 searches of 1 neighbor):          5.297µs/query
+query_nearest_k k=1 - 1000 queries:          6.315µs/query
+query_nearest_k k=10 - 1000 queries:         6.580µs/query
+query_nearest_k k=100 - 1000 queries:       13.783µs/query
+query_nearest_k k=1000 - 100 queries:       86.150µs/query
+query_point - 10000 queries:                       1.083µs/query
+query_intersecting_k k=100 - 10000 queries:        1.886µs/query
+query_contain - 1000 queries:                      2.027µs/query
+query_contained_within - 1000 queries:             2.947µs/query
+query_circle - 1000 queries (radius=5):          49.666µs/query
+query_in_direction - 1000 queries:               13.243µs/query
+query_in_direction_k k=50 - 1000 queries:        20.865µs/query
 
-Running query benchmarks:
------------------------
-HilbertRTree::query_intersecting(f64)
-1000 searches 100%: 2074ms
-1000 searches 50%: 391ms
-1000 searches 10%: 89ms
-1000 searches 1%: 17ms
-1000 searches 0.01%: 2ms
+Point Cloud Queries
+===================
+build point cloud 1000000 points:                  71.33ms
+query_circle_points - 1000 queries (radius=5):     30.001µs/query
+query_nearest_k_points k=1 - 1000 queries:          2.955µs/query
+query_nearest_k_points k=10 - 1000 queries:         4.333µs/query
+query_nearest_k_points k=100 - 1000 queries:       12.038µs/query
+query_nearest_k_points k=1000 - 100 queries:       76.387µs/query
 
------------------------
-HilbertRTreeI32::query_intersecting(i32)
-1000 searches 100%: 1397ms
-1000 searches 50%: 197ms
-1000 searches 10%: 42ms
-1000 searches 1%: 6ms
-1000 searches 0.01%: 0ms
 
-Running neighbor benchmarks:
------------------------
-query_nearest_k(f64)
-1000 searches of 100 neighbors: 13ms
-1 searches of 1000000 neighbors: 107ms
-100000 searches of 1 neighbors: 556ms
+Box Tree Queries (i32)
+================
+build box tree 1000000 items:        55.19ms
+query_intersecting (100% coverage) - 1000 queries:     1676.877µs/query
+query_intersecting (50% coverage)  - 1000 queries:      262.290µs/query
+query_intersecting (50% coverage)  - 1000 queries:       55.554µs/query
+query_intersecting (1% coverage)   - 1000 queries:        7.253µs/query
+query_intersecting (0.01% coverage)- 1000 queries:        0.768µs/query
+query_intersecting_k k=100 - 10000 queries:               0.564µs/query
+query_point - 10000 queries:                  0.449µs/query
+query_contain - 1000 queries:                 0.279µs/query
+query_contained_within - 1000 queries:        1.604µs/query
+query_intersecting_id - 1000 queries:         0.307µs/query
 
 ```
 

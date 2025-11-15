@@ -3,6 +3,8 @@
 ## [0.7.0] - 2025-11-15
 - `query_circle_points` returns unsorted points
 - Fix documentation
+- query_intersecting_id for i32
+- added benchmark and restructured current ones
 
 ## [0.6.13] - 2025-11-08
 - Fix documentation

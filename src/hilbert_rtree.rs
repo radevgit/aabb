@@ -1379,13 +1379,11 @@ impl HilbertRTree {
         k: usize,
         results: &mut Vec<usize>,
     ) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() || k == 0 {
-            results.clear();
             return;
         }
 
-        results.clear();
-        
         let mut queue = VecDeque::with_capacity(self.level_bounds.len() * 2);
         let mut node_index = self.total_nodes - 1;
         
@@ -1453,12 +1451,10 @@ impl HilbertRTree {
     /// // Results include boxes 0 and 1 (within circle), but not box 2
     /// ```
     pub fn query_circle(&self, center_x: f64, center_y: f64, radius: f64, results: &mut Vec<usize>) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() || radius < 0.0 {
-            results.clear();
             return;
         }
-
-        results.clear();
         
         let radius_sq = radius * radius;
         let mut queue = VecDeque::new();
@@ -1526,12 +1522,11 @@ impl HilbertRTree {
     /// // Results include points 0 and 1 (within radius)
     /// ```
     pub fn query_circle_points(&self, center_x: f64, center_y: f64, radius: f64, results: &mut Vec<usize>) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() || radius < 0.0 {
-            results.clear();
             return;
         }
 
-        results.clear();
         let radius_sq = radius * radius;
         let mut queue = VecDeque::new();
         let mut node_index = self.total_nodes - 1;
@@ -1721,8 +1716,8 @@ impl HilbertRTree {
         distance: f64,
         results: &mut Vec<usize>,
     ) {
+        results.clear();
         if self.num_items == 0 || self.level_bounds.is_empty() || distance < 0.0 || k == 0 {
-            results.clear();
             return;
         }
 

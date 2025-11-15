@@ -587,6 +587,20 @@ impl HilbertRTreeI32 {
     ///
     /// # Errors
     /// Returns an error if `item_id >= num_items` (the item doesn't exist in the tree).
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABBI32::with_capacity(3);
+    /// tree.add(0, 0, 2, 2);  // Item 0
+    /// tree.add(1, 1, 3, 3);  // Item 1
+    /// tree.add(4, 4, 5, 5);  // Item 2
+    /// tree.build();
+    ///
+    /// let mut results = Vec::new();
+    /// tree.query_intersecting_id(0, &mut results).unwrap();
+    /// // Results include item 1 (intersects with item 0), but not item 0 itself
+    /// ```
     pub fn query_intersecting_id(
         &self,
         item_id: usize,

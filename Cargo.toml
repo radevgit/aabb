@@ -44,6 +44,10 @@ name = "profile_bench"
 harness = false
 
 [[bench]]
+name = "profile_bench_i32"
+harness = false
+
+[[bench]]
 name = "profile_parallel"
 harness = false
 
