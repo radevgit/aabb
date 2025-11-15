@@ -5,6 +5,7 @@
 - Fix documentation
 - query_intersecting_id for i32
 - added benchmark and restructured current ones
+- New benchmarks results, formatted
 
 ## [0.6.13] - 2025-11-08
 - Fix documentation
