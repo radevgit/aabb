@@ -96,6 +96,13 @@
 //! - [`query_nearest_k`] `(f64)` - Find K nearest boxes to a point (use k=1 for single nearest)
 //! - [`query_circle`] `(f64)` - Find boxes intersecting a circular region
 //!
+//! ### Point-Specific Optimized Queries
+//! - [`query_nearest_k_points`] `(f64)` - Find K nearest points (stored as (x, x, y, y)), sorted by distance
+//! - [`query_circle_points`] `(f64)` - Find points within a circular region (optimized for point data)
+//!
+//! **Note:** Point-specific methods assume all items in the tree are stored as degenerate boxes (points)
+//! where `min_x == max_x` and `min_y == max_y`. For mixed data (both points and boxes), use the general methods instead.
+//!
 //! ### Directional Queries  
 //! - [`query_in_direction`] `(f64)` - Find boxes intersecting a rectangle's movement path
 //! - [`query_in_direction_k`] `(f64)` - Find K nearest boxes intersecting a rectangle's movement path
@@ -108,6 +115,8 @@
 //! [`query_contained_within`]: HilbertRTree::query_contained_within
 //! [`query_nearest_k`]: HilbertRTree::query_nearest_k
 //! [`query_circle`]: HilbertRTree::query_circle
+//! [`query_nearest_k_points`]: HilbertRTree::query_nearest_k_points
+//! [`query_circle_points`]: HilbertRTree::query_circle_points
 //! [`query_in_direction`]: HilbertRTree::query_in_direction
 //! [`query_in_direction_k`]: HilbertRTree::query_in_direction_k
 //!

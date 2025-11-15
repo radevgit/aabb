@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 
-A Rust library providing a simple and efficient Hilbert R-tree implementation for spatial queries on axis-aligned bounding boxes (AABBs).
+A Rust library providing efficient Hilbert R-tree implementation for spatial queries on axis-aligned bounding boxes (AABBs).
 
 ## Features
 
@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-aabb = "0.6"
+aabb = "0.7"
 ```
 
 ### Basic Example
@@ -71,7 +71,6 @@ fn main() {
     tree.query_circle_points(0.0, 0.0, 2.5, &mut results);
     
     println!("Found {} points within radius 2.5", results.len());
-    // Results are sorted by distance (closest first)
     
     // Find K nearest points
     let mut results = Vec::new();
@@ -122,10 +121,10 @@ The curve preserves spatial locality - points close to each other in 2D space te
 - `query_circle(center_x, center_y, radius, results)` `(f64)` - Find boxes intersecting a circular region
 
 #### Point-Specific Optimized Queries
-- `query_nearest_k_points(x, y, k, results)` `(f64)` - **Optimized** - Find K nearest points (stored as (x, x, y, y)) - ~30% faster than `query_nearest_k` for point clouds
-- `query_circle_points(center_x, center_y, radius, results)` `(f64)` - **Optimized** - Find points within a circular region with distance-sorted results - ~30% faster than `query_circle` for point clouds
+- `query_nearest_k_points(x, y, k, results)` `(f64)` - Find K nearest points (stored as (x, x, y, y)), sorted by distance
+- `query_circle_points(center_x, center_y, radius, results)` `(f64)` - Find points within a circular region (optimized for point data)
 
-**Note:** Point-specific methods assume all items in the tree are stored as degenerate boxes (points) where `min_x == max_x` and `min_y == max_y`. For mixed data (both points and boxes), use the general methods instead. Results from point-specific queries are automatically sorted by distance (closest first).
+**Note:** Point-specific methods assume all items in the tree are stored as degenerate boxes (points) where `min_x == max_x` and `min_y == max_y`. For mixed data (both points and boxes), use the general methods instead.
 
 #### Directional Queries
 - `query_in_direction(rect_min_x, rect_min_y, rect_max_x, rect_max_y, direction_x, direction_y, distance, results)` `(f64)` - Find boxes intersecting a rectangle's movement path

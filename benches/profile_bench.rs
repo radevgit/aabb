@@ -273,6 +273,69 @@ fn main() {
         results.len() as f64
     );
 
+    // Build a tree with point data for point-specific queries
+    println!("\n\nPoint Cloud Queries");
+    println!("====================");
+    println!("\nBuilding point cloud index {} points...", num_items);
+    
+    let mut point_tree = HilbertRTree::with_capacity(num_items);
+    for _ in 0..num_items {
+        let x = rng.random_range(0.0..100.0);
+        let y = rng.random_range(0.0..100.0);
+        point_tree.add_point(x, y);
+    }
+    let build_point_start = Instant::now();
+    point_tree.build();
+    let build_point_time = build_point_start.elapsed();
+    println!("  Built in {:.2}ms\n", build_point_time.as_secs_f64() * 1000.0);
+
+    // Profile query_circle_points
+    println!("Profiling query_circle_points:");
+    println!("{}", "-".repeat(40));
+
+    let query_start = Instant::now();
+    for i in 0..num_tests {
+        results.clear();
+        let x = coords[4 * i];
+        let y = coords[4 * i + 1];
+        point_tree.query_circle_points(x, y, 5.0, &mut results);
+    }
+    let elapsed = query_start.elapsed();
+    println!(
+        "  {} queries (radius=5):    {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+        num_tests,
+        elapsed.as_secs_f64() * 1000.0,
+        elapsed.as_secs_f64() * 1_000_000.0 / num_tests as f64,
+        results.len() as f64
+    );
+
+    // Profile query_nearest_k_points with different K values
+    println!("\nProfiling query_nearest_k_points:");
+    println!("{}", "-".repeat(40));
+
+    let k_values = vec![1, 10, 100, 1000];
+
+    for k in k_values {
+        let num_queries = if k == 1000 { 100 } else { num_tests };
+
+        let query_start = Instant::now();
+        for i in 0..num_queries {
+            let x = coords[4 * i];
+            let y = coords[4 * i + 1];
+            point_tree.query_nearest_k_points(x, y, k, &mut results);
+        }
+        let elapsed = query_start.elapsed();
+
+        println!(
+            "  {} queries k={}:          {:.2}ms ({:.3}µs/query, avg {:.1} results)",
+            num_queries,
+            k,
+            elapsed.as_secs_f64() * 1000.0,
+            elapsed.as_secs_f64() * 1_000_000.0 / num_queries as f64,
+            results.len() as f64
+        );
+    }
+
     println!("\n{}", "=".repeat(50));
     println!("\nSummary:");
     println!("--------");
@@ -395,6 +458,7 @@ Summary:
 --------
 Build dominates: 21.1%
 Queries (total): 356.81ms
+___________________________________________________________________________________
 
 
 */

@@ -1497,8 +1497,9 @@ impl HilbertRTree {
     ///
     /// This is an optimized version of `query_circle()` specifically for point data.
     /// For point items where min_x==max_x and min_y==max_y, this method computes
-    /// distances directly without the axis_distance() helper function, providing
-    /// approximately 30% faster queries on point clouds.
+    /// distances directly without the axis_distance() helper function for leaf nodes.
+    /// For parent nodes, axis_distance is used to maintain correctness.
+    /// This optimization provides approximately 30% faster queries on point clouds.
     ///
     /// **Important:** This method assumes all items in the tree are stored as points.
     /// If the tree contains mixed data (both points and boxes), use `query_circle()` instead
@@ -1509,7 +1510,7 @@ impl HilbertRTree {
     /// * `center_y` - Y coordinate of circle center
     /// * `radius` - Radius of the circular region
     /// * `results` - Output vector; will be cleared and populated with indices of all point items
-    ///              within the circular region, sorted by distance (closest first)
+    ///              within the circular region
     ///
     /// # Example
     /// ```
@@ -1522,7 +1523,7 @@ impl HilbertRTree {
     ///
     /// let mut results = Vec::new();
     /// tree.query_circle_points(0.0, 0.0, 1.5, &mut results);
-    /// // Results include points 0 and 1 (within radius), ordered by distance
+    /// // Results include points 0 and 1 (within radius)
     /// ```
     pub fn query_circle_points(&self, center_x: f64, center_y: f64, radius: f64, results: &mut Vec<usize>) {
         if self.num_items == 0 || self.level_bounds.is_empty() || radius < 0.0 {
@@ -1533,8 +1534,6 @@ impl HilbertRTree {
         results.clear();
         let radius_sq = radius * radius;
         let mut queue = VecDeque::new();
-        let mut candidates: Vec<(f64, usize)> = Vec::new();
-        
         let mut node_index = self.total_nodes - 1;
         
         loop {
@@ -1563,7 +1562,7 @@ impl HilbertRTree {
                     if pos >= self.num_items {
                         queue.push_back((index >> 2) as usize);
                     } else {
-                        candidates.push((dist_sq, index as usize));
+                        results.push(index as usize);
                     }
                 }
             }
@@ -1573,12 +1572,6 @@ impl HilbertRTree {
             }
 
             node_index = queue.pop_front().unwrap();
-        }
-
-        // Sort by distance ascending
-        candidates.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        for (_, idx) in candidates {
-            results.push(idx);
         }
     }
 
