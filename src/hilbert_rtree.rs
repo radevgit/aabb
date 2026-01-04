@@ -10,7 +10,9 @@ use std::mem::size_of;
 use std::collections::VecDeque;
 
 /// Box structure: minX, minY, maxX, maxY
+/// Using #[repr(C)] for predictable memory layout
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub(crate) struct Box {
     pub(crate) min_x: f64,
     pub(crate) min_y: f64,
