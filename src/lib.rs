@@ -8,8 +8,9 @@
 //! - **Hilbert Curve Ordering**: Uses Hilbert space-filling curve for improved spatial locality
 //! - **AABB Intersection Queries**: Fast rectangular bounding box intersection testing
 //! - **Simple API**: Easy to use with minimal setup
-//! - **Static Optimization**: Efficient for static or infrequently-modified spatial data
-//! 
+//! - **Static Optimization**: Efficient for static or infrequently-modified spatial data.
+//!   Changed data is handled by rebuilding the index (see "Changing data" below)
+//!
 //!
 //! ## Quick Start
 //!
@@ -80,6 +81,42 @@
 //! tree.query_in_direction_k(1.5, 1.5, 2.5, 2.5, 1.0, 0.0, 2, 3.0, &mut results);
 //! println!("2 nearest boxes in movement path: {:?}", results);
 //!
+//! ```
+//!
+//! ## Changing data
+//!
+//! The index is built in one pass; single items cannot be moved or removed. When the data
+//! changes, rebuild the index (about 5 ms for 100,000 items). This works the same for [`AABB`]
+//! (f64) and [`AABBI32`]:
+//!
+//! - Call `add()` for new items and `build()` again. Every item keeps the id `add()` gave it.
+//!   Queries return no results between `add()` and the next `build()`.
+//! - Or call `clear()`, add the current items and `build()`. This reuses the tree's memory,
+//!   which suits data rebuilt every frame. Ids start from 0 again after `clear()`.
+//!
+//! ```rust
+//! use aabb::prelude::*;
+//!
+//! let mut tree = AABB::with_capacity(100);
+//! for frame in 0..3 {
+//!     tree.clear();
+//!     for i in 0..100 {
+//!         let x = i as f64 + frame as f64; // objects move each frame
+//!         tree.add(x, 0.0, x + 1.0, 1.0);  // item id == i in every frame
+//!     }
+//!     tree.build();
+//!
+//!     let mut results = Vec::new();
+//!     tree.query_intersecting(0.0, 0.0, 5.0, 1.0, &mut results);
+//!     assert_eq!(tree.get(7), Some((7.0 + frame as f64, 0.0, 8.0 + frame as f64, 1.0)));
+//!     assert!(!results.is_empty());
+//! }
+//!
+//! // Adding to a built tree and rebuilding keeps earlier ids
+//! tree.add(500.0, 0.0, 501.0, 1.0); // id 100
+//! tree.build();
+//! assert_eq!(tree.get(100), Some((500.0, 0.0, 501.0, 1.0)));
+//! assert_eq!(tree.get(7), Some((9.0, 0.0, 10.0, 1.0)));
 //! ```
 //!
 //! ## Available Query Methods

@@ -127,7 +127,7 @@ fn main() {
     }
     let elapsed = query_start.elapsed();
     println!(
-        "query_intersecting (50% coverage)  - {} queries: {:>12.3}µs/query",
+        "query_intersecting (10% coverage)  - {} queries: {:>12.3}µs/query",
         num_tests,
         elapsed.as_secs_f64() * 1_000_000.0 / num_tests as f64
     );
@@ -226,7 +226,17 @@ fn main() {
         elapsed.as_secs_f64() * 1_000_000.0 / num_queries as f64
     );
 
-    // query_intersecting_id (finds boxes intersecting a specific item by ID)
+    // query_intersecting_id (finds boxes intersecting a specific item by ID).
+    // It looks the item up by id, and the first lookup after build() builds the id lookup
+    // table (O(n)). Time that once separately so the per-query figure is the steady state.
+    let table_start = Instant::now();
+    let first = tree.get(0);
+    println!(
+        "get() first call, builds id table - 1 call:   {:>12.3}ms",
+        table_start.elapsed().as_secs_f64() * 1_000.0
+    );
+    assert!(first.is_some(), "item 0 must exist");
+
     let num_queries = num_tests;
     let query_start = Instant::now();
     for i in 0..num_queries {

@@ -1,14 +1,13 @@
 [package]
 
 name = "aabb"
-version = "0.7.0"
+version = "0.8.0"
 description = "Static AABB spatial index for 2D queries"
 rust-version = "1.88"
 edition = "2024"
 categories = ["science::geo", "data-structures", "game-development", "graphics"]
 keywords = ["spatial-index", "spatial", "aabb", "nearest-neighbor", "rtree"]
 license = "MIT"
-homepage = "https://github.com/radevgit/aabb"
 repository = "https://github.com/radevgit/aabb"
 documentation = "https://docs.rs/aabb"
 readme = "README.md"
@@ -37,6 +36,10 @@ harness = false
 
 [[bench]]
 name = "query_intersecting_bench_i32"
+harness = false
+
+[[bench]]
+name = "dynamic_usage_bench"
 harness = false
 
 [[bench]]

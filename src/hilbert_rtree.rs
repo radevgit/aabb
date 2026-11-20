@@ -8,6 +8,7 @@
 
 use std::mem::size_of;
 use std::collections::VecDeque;
+use std::sync::OnceLock;
 
 /// Box structure: minX, minY, maxX, maxY
 #[derive(Clone, Copy, Debug)]
@@ -51,6 +52,15 @@ pub struct HilbertRTree {
     total_nodes: usize,
     /// Pre-allocated capacity in bytes (0 if not pre-allocated)
     allocated_capacity: usize,
+    /// Lazily built map from item id to leaf position, used by `get()`.
+    /// Derived data: reset by `add()` and `build()`, never saved to disk.
+    id_to_pos: OnceLock<Vec<u32>>,
+    /// Item id of each leaf position, kept only while the tree has changes not yet built.
+    ///
+    /// Empty means "never built": leaf position == item id. Otherwise it holds one id per
+    /// leaf (`len == num_items`) and is the id table of the previous build, so that a
+    /// rebuild keeps every item's id. `build()` moves it into the buffer and empties it.
+    leaf_ids: Vec<u32>,
 }
 
 const MAX_HILBERT: u32 = u16::MAX as u32;
@@ -119,11 +129,67 @@ impl HilbertRTree {
             position: 0,
             bounds: Box::new(f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
             total_nodes: 0,
+            id_to_pos: OnceLock::new(),
+            leaf_ids: Vec::new(),
         }
     }
 
-    /// Adds a bounding box to the tree
+    /// Removes all items so the tree can be refilled, keeping its allocated memory.
+    ///
+    /// After `clear()` the tree is empty and item ids start again from 0. Call `add()` for
+    /// the new items and `build()` before querying. Reusing one tree this way avoids
+    /// reallocating the buffer when the indexed data is rebuilt every frame.
+    ///
+    /// # Example
+    /// ```
+    /// use aabb::prelude::*;
+    /// let mut tree = AABB::with_capacity(2);
+    /// tree.add(0.0, 0.0, 1.0, 1.0);
+    /// tree.build();
+    ///
+    /// tree.clear();
+    /// assert!(tree.is_empty());
+    /// tree.add(5.0, 5.0, 6.0, 6.0); // item 0 again
+    /// tree.build();
+    /// assert_eq!(tree.get(0), Some((5.0, 5.0, 6.0, 6.0)));
+    /// ```
+    pub fn clear(&mut self) {
+        self.num_items = 0;
+        self.position = 0;
+        self.level_bounds.clear();
+        self.total_nodes = 0;
+        self.leaf_ids = Vec::new();
+        self.id_to_pos.take();
+        self.bounds = Box::new(f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+    }
+
+    /// Turns a built tree back into a list of leaves so items can be added.
+    ///
+    /// Leaf boxes stay where `build()` put them. The ids of the previous build are saved in
+    /// `leaf_ids`, and the parent levels are discarded.
+    fn reopen(&mut self) {
+        let ids: Vec<u32> = (0..self.num_items).map(|pos| self.get_index(pos)).collect();
+        self.leaf_ids = ids;
+        self.level_bounds.clear();
+        self.total_nodes = 0;
+    }
+
+    /// Adds a bounding box to the tree.
+    ///
+    /// The item's id is its position in insertion order: 0 for the first item added since
+    /// creation or `clear()`, then 1, 2, and so on.
+    ///
+    /// Items can also be added after `build()`. Existing items keep their ids, and queries
+    /// return no results until `build()` is called again.
     pub fn add(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) {
+        self.id_to_pos.take();
+        if !self.level_bounds.is_empty() {
+            self.reopen();
+        }
+        if !self.leaf_ids.is_empty() {
+            self.leaf_ids.push(self.num_items as u32);
+        }
+
         // Calculate required size for this item
         let required_size = estimate_buffer_size(self.num_items + 1, self.node_size);
         
@@ -234,8 +300,17 @@ impl HilbertRTree {
         }
     }
 
-    /// Builds the Hilbert R-tree index
+    /// Builds the Hilbert R-tree index.
+    ///
+    /// Call it after adding items and before querying. It can be called again after more
+    /// items are added: the index is rebuilt and every item keeps the id it was given by
+    /// `add()`. Calling it when nothing was added since the last build does nothing.
     pub fn build(&mut self) {
+        if !self.level_bounds.is_empty() {
+            return; // already built, no items added since
+        }
+        self.id_to_pos.take();
+
         if self.num_items == 0 {
             return;
         }
@@ -259,6 +334,9 @@ impl HilbertRTree {
         // This is unavoidable without additional bookkeeping to track which positions are initialized.
         if self.data.len() < data_size {
             self.data.resize(data_size, 0);
+        } else {
+            // Left over from a larger tree before clear(); keeps save() from writing it out.
+            self.data.truncate(data_size);
         }
 
         // Calculate level bounds
@@ -292,12 +370,15 @@ impl HilbertRTree {
             // Initialize all leaf indices first
             let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
             for i in 0..num_items {
+                // Boxes are not reordered here, so the leaf at position i keeps its previous id.
+                let id = if self.leaf_ids.is_empty() { i as u32 } else { self.leaf_ids[i] };
                 let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
                 unsafe {
-                    std::ptr::write_unaligned(idx_ptr, i as u32);
+                    std::ptr::write_unaligned(idx_ptr, id);
                 }
             }
-            
+            self.leaf_ids = Vec::new();
+
             // Write the root node box at position num_items
             let root_idx = HEADER_SIZE + num_items * size_of::<Box>();
             let root_ptr = &mut self.data[root_idx] as *mut u8 as *mut Box;
@@ -369,16 +450,21 @@ impl HilbertRTree {
         // Initialize leaf indices AFTER sorting - map new position to original box ID
         let indices_start = HEADER_SIZE + total_nodes * size_of::<Box>();
         
-        // Note: We removed the sorted_order vector to save memory
-        // get() method now uses lazy search through indices when needed
-        
+        // sort_indices[i] is the previous leaf position of the box now at position i. On a first
+        // build that position is the item id; on a rebuild leaf_ids maps it to the item id,
+        // so ids stay the ones given by add().
         for i in 0..num_items {
+            let id = if self.leaf_ids.is_empty() {
+                sort_indices[i] as u32
+            } else {
+                self.leaf_ids[sort_indices[i]]
+            };
             let idx_ptr = &mut self.data[indices_start + i * size_of::<u32>()] as *mut u8 as *mut u32;
             unsafe {
-                // sort_indices[i] tells us which original box is now at position i
-                std::ptr::write_unaligned(idx_ptr, sort_indices[i] as u32);
+                std::ptr::write_unaligned(idx_ptr, id);
             }
         }
+        self.leaf_ids = Vec::new();
 
         // Build parent levels
         let mut pos = 0_usize;
@@ -437,6 +523,10 @@ impl HilbertRTree {
     /// Returns the bounding box (min_x, min_y, max_x, max_y) for the item with the given ID,
     /// or None if the ID is out of bounds.
     ///
+    /// After `build()` the first call builds an id lookup table (O(n), 4 bytes per item);
+    /// later calls are O(1). `add()` or `build()` discard the table, so the next call
+    /// rebuilds it. The id is the one `add()` gave the item and stays the same across rebuilds.
+    ///
     /// # Arguments
     /// * `item_id` - The index of the item (0-based, in order added)
     ///
@@ -457,20 +547,36 @@ impl HilbertRTree {
             return None;
         }
 
-        // If tree hasn't been built yet, items are in insertion order
-        if self.level_bounds.is_empty() {
+        // Never built: items are still in insertion order
+        if self.level_bounds.is_empty() && self.leaf_ids.is_empty() {
             let bbox = self.get_box(item_id);
             return Some((bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y));
         }
 
-        // After build(): search through leaf nodes to find which position has this item_id
-        for pos in 0..self.num_items {
-            if self.get_index(pos) as usize == item_id {
-                let bbox = self.get_box(pos);
-                return Some((bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y));
+        // Built (or changed since the last build): boxes are in Hilbert order, so look up the
+        // leaf position of this id. The id -> position map is built on first use and dropped
+        // by add()/build().
+        let id_to_pos = self.id_to_pos.get_or_init(|| {
+            let mut map = vec![u32::MAX; self.num_items];
+            for pos in 0..self.num_items {
+                let id = if self.level_bounds.is_empty() {
+                    self.leaf_ids[pos] as usize
+                } else {
+                    self.get_index(pos) as usize
+                };
+                // Ignore out-of-range ids; keep the first position if an id repeats.
+                if id < map.len() && map[id] == u32::MAX {
+                    map[id] = pos as u32;
+                }
             }
+            map
+        });
+        let pos = *id_to_pos.get(item_id)?;
+        if pos == u32::MAX {
+            return None;
         }
-        None
+        let bbox = self.get_box(pos as usize);
+        Some((bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y))
     }
 
 
@@ -627,11 +733,13 @@ impl HilbertRTree {
             return Err(format!("item_id {} is out of bounds (tree has {} items)", item_id, self.num_items));
         }
         
-        // Get the bounding box of the query item
-        let query_box = self.get_box(item_id);
-        
+        // Get the bounding box of the query item (by id: after build() boxes are reordered)
+        let Some((min_x, min_y, max_x, max_y)) = self.get(item_id) else {
+            return Err(format!("item_id {} not found in tree", item_id));
+        };
+
         // Use the existing query_intersecting method with the box bounds
-        self.query_intersecting(query_box.min_x, query_box.min_y, query_box.max_x, query_box.max_y, results);
+        self.query_intersecting(min_x, min_y, max_x, max_y, results);
         
         // Always exclude the query item itself (no self-intersections)
         results.retain(|&idx| idx != item_id);
@@ -1897,8 +2005,19 @@ impl HilbertRTree {
     /// ```
     pub fn save<P: AsRef<std::path::Path>>(&self, path: P) -> std::io::Result<()> {
         use std::io::Write;
+
+        // Items added after build() are not in the tree yet, and the saved buffer would not
+        // match the ids; refuse rather than write a file that loads with wrong ids.
+        // Checked before creating the file so an existing file is not truncated.
+        if self.level_bounds.is_empty() && !self.leaf_ids.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "tree has items added since the last build(); call build() before save()",
+            ));
+        }
+
         let mut file = std::fs::File::create(path)?;
-        
+
         // Write magic number and version (file header for validation)
         file.write_all(&[0xfb])?;  // magic (f64 variant)
         file.write_all(&[0x01])?;  // version 1 (f64 variant)
@@ -2028,6 +2147,8 @@ impl HilbertRTree {
             bounds,
             total_nodes,
             allocated_capacity: data_len,
+            id_to_pos: OnceLock::new(),
+            leaf_ids: Vec::new(),
         })
     }
 }

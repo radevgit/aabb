@@ -95,4 +95,44 @@ mod test_legacy_direction {
         
         // Don't assert - just print to see what it returns
     }
+
+    /// The legacy tree keeps boxes in insertion order and only stores a sort permutation,
+    /// so repeated builds and add-then-rebuild must keep ids stable.
+    #[test]
+    fn test_legacy_rebuild_keeps_ids() {
+        let mut state = 12345_u64;
+        let mut next = || {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (state >> 33) as f64 / (1_u64 << 31) as f64
+        };
+        let boxes: Vec<(f64, f64, f64, f64)> = (0..500)
+            .map(|_| {
+                let (x, y) = (next(), next());
+                (x, y, x + 0.02, y + 0.02)
+            })
+            .collect();
+
+        let mut tree = HilbertRTreeLeg::new();
+        for b in &boxes[..400] {
+            tree.add(b.0, b.1, b.2, b.3);
+        }
+        tree.build();
+        tree.build();
+        for b in &boxes[400..] {
+            tree.add(b.0, b.1, b.2, b.3);
+        }
+        tree.build();
+
+        let q = (0.2, 0.2, 0.6, 0.6);
+        let mut got = Vec::new();
+        tree.query_intersecting(q.0, q.1, q.2, q.3, &mut got);
+        got.sort_unstable();
+        let want: Vec<usize> = boxes
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| b.0 <= q.2 && b.2 >= q.0 && b.1 <= q.3 && b.3 >= q.1)
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(got, want, "legacy tree returned wrong ids after rebuilds");
+    }
 }

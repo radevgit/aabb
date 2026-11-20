@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0] 2026-11-20
+- Fixed (#5): calling `build()` a second time, or after more `add()` calls, scrambled item ids. Items now keep the id `add()` gave them across rebuilds. `AABB` and `AABBI32`.
+- Fixed: `query_intersecting_id()` used the box at the item's leaf position instead of the item's id, so it returned wrong results on any built tree with more than 16 items. `AABB` and `AABBI32`.
+- Added `clear()`: removes all items and keeps the allocated memory, so one tree can be refilled and rebuilt every frame. Ids start from 0 again. `AABB` and `AABBI32`.
+- Added `get(id)` to `AABBI32` (it already existed on `AABB`, where it was O(n) per call).
+- `get(id)` is O(1) after the first call. The first call after `build()` builds an id lookup table, 4 bytes per item, dropped again by `add()` or `build()`.
+- `build()` does nothing when no items were added since the last build.
+- Items can be added after `build()`; queries return no results until `build()` is called again.
+- `save()` returns an error if items were added since the last `build()`.
+- Added benchmark `dynamic_usage_bench` (rebuild, `clear()` and `get()` cost).
+
 ## [0.7.0] - 2025-11-15
 - `query_circle_points` returns unsorted points
 - Fix documentation
